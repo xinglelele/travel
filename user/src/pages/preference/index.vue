@@ -135,6 +135,21 @@ async function onNext() {
   }
   if (selectedInterests.value.length == 0) { uni.showToast({ title: '请至少选择一个偏好', icon: 'none' }); return }
   const pref = { travelType: [nationality.value], interests: selectedInterests.value, transports: [intensity.value] }
+
+  // 确保已登录（匿名登录）
+  let token = uni.getStorageSync('token') as string
+  if (!token) {
+    try {
+      const loginRes = await userApi.anonymous()
+      token = loginRes.token
+      uni.setStorageSync('token', token)
+    } catch {
+      userStore.setPendingPreference(pref)
+      uni.switchTab({ url: '/pages/home/index' })
+      return
+    }
+  }
+
   try {
     await userApi.preference(pref)
     userStore.setPreference(pref)

@@ -1,15 +1,17 @@
 import { mockRequest } from '../../mock/index'
 
 /** true = mock 模式，false = 请求真实接口 */
-const USE_MOCK = true
+const USE_MOCK = false
 
-const BASE_URL = 'https://api.example.com'
+const BASE_URL = 'http://localhost:3000'
 
 interface RequestOptions {
     url: string
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
     data?: Record<string, unknown>
     header?: Record<string, string>
+    /** 如果为 true，401 错误不会触发自动登出（适用于可选认证接口） */
+    optionalAuth?: boolean
 }
 
 interface ApiResponse<T = unknown> {
@@ -48,8 +50,11 @@ export function request<T = unknown>(options: RequestOptions): Promise<T> {
             success: (res) => {
                 const response = res.data as ApiResponse<T>
                 if (res.statusCode === 401) {
-                    uni.removeStorageSync('token')
-                    uni.switchTab({ url: '/pages/home/index' })
+                    // 可选认证接口的 401 不触发登出
+                    if (!options.optionalAuth) {
+                        uni.removeStorageSync('token')
+                        uni.switchTab({ url: '/pages/home/index' })
+                    }
                     reject(new Error('登录已过期'))
                     return
                 }
@@ -73,11 +78,11 @@ export function request<T = unknown>(options: RequestOptions): Promise<T> {
     })
 }
 
-export const get = <T = unknown>(url: string, data?: Record<string, unknown>) =>
-    request<T>({ url, method: 'GET', data })
+export const get = <T = unknown>(url: string, data?: Record<string, unknown>, optionalAuth = false) =>
+    request<T>({ url, method: 'GET', data, optionalAuth })
 
-export const post = <T = unknown>(url: string, data?: Record<string, unknown>) =>
-    request<T>({ url, method: 'POST', data })
+export const post = <T = unknown>(url: string, data?: Record<string, unknown>, optionalAuth = false) =>
+    request<T>({ url, method: 'POST', data, optionalAuth })
 
 export const put = <T = unknown>(url: string, data?: Record<string, unknown>) =>
     request<T>({ url, method: 'PUT', data })

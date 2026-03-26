@@ -1,0 +1,586 @@
+// Prisma Schema - 智慧旅游平台
+// 数据库: MySQL 8.0.30
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================
+// 用户端模型
+// ============================================
+
+model User {
+  id            Int       @id @default(autoincrement())
+  tel           String?   @unique
+  openid        String    @unique
+  password      String?
+  nickname      String?
+  avatar        String?
+  gender        Int?
+  locale        String    @default("zh-CN")
+  registerType  Int       @default(0) @map("register_type")
+  status        Int       @default(0)
+  aiPlanCount   Int       @default(0) @map("ai_plan_count")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  preference UserPreference?
+  routes       Route[]
+  checks       CheckInfo[]
+  comments     CommentInfo[]
+  messages     MessageInfo[]
+  behaviors    UserBehavior[]
+  reports      ReportRecord[]
+  routeShares  RouteShare[]
+  commentAuditReports CommentAuditQueue[]
+
+  @@map("user")
+}
+
+model SmsCode {
+  id        BigInt    @id @default(autoincrement())
+  phone     String    @map("phone")
+  code      String    @map("code")
+  type      String    @map("type")
+  used      Int       @default(0)
+  expiredAt DateTime  @map("expired_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([phone, type])
+  @@index([expiredAt])
+  @@map("sms_code")
+}
+
+model UserPreference {
+  id                     Int      @id @default(autoincrement())
+  userId                 Int      @unique @map("user_id")
+  fromRegion             Int      @map("from_region")
+  preferenceTags         Json?    @map("preference_tags")
+  hasCompletedOnboarding Int      @default(0) @map("has_completed_onboarding")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_prefer")
+}
+
+model Route {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  routeName       Json     @map("route_name")
+  totalDays       Int      @map("total_days")
+  description     Json?    @map("description")
+  poiList         Json     @map("poi_list")
+  routeDetail     Json?    @map("route_detail")
+  coverImage      String?  @map("cover_image")
+  tags            Json?    @map("tags")
+  isAiGenerated   Int      @default(0) @map("is_ai_generated")
+  sourcePrompt    String?  @map("source_prompt")
+  useCount        Int      @default(0) @map("use_count")
+  status          Int      @default(0)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checks  CheckInfo[]
+  shares  RouteShare[]
+  comments CommentInfo[]
+
+  @@index([userId])
+  @@map("routes_info")
+}
+
+model CheckInfo {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  poiId      Int       @map("poi_id")
+  routeId    Int?      @map("route_id")
+  checkTime  DateTime  @map("check_time")
+  longitude  Decimal   @db.Decimal(10, 7)
+  latitude   Decimal   @db.Decimal(10, 7)
+  distance   Decimal?  @db.Decimal(10, 2)
+  stayMins   Int?      @map("stay_mins")
+  hourTag    Int       @map("hour_tag")
+  weekTag    Int       @map("week_tag")
+  monthTag   Int       @map("month_tag")
+  yearTag    Int       @map("year_tag")
+  dayTag     DateTime  @db.Date @map("day_tag")
+  note       String?   @map("note")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poi    PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  route  Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([poiId])
+  @@map("check_info")
+}
+
+model CommentInfo {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @map("user_id")
+  poiId          Int       @map("poi_id")
+  routeId        Int?      @map("route_id")
+  rating         Decimal   @db.Decimal(2, 1)
+  content        String    @db.Text
+  images         Json?     @map("images")
+  helpfulCount   Int       @default(0) @map("helpful_count")
+  merchantReply  String?   @map("merchant_reply") @db.Text
+  replyTime      DateTime? @map("reply_time")
+  status         Int       @default(1)
+  auditStatus    Int       @default(0)
+  isReported     Int       @default(0) @map("is_reported")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poi  PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  route Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  auditQueue CommentAuditQueue?
+
+  @@index([userId])
+  @@index([poiId])
+  @@map("comment_info")
+}
+
+model MessageInfo {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  type      String    @map("type")
+  title     String    @map("title")
+  content   String?   @db.Text
+  isRead    Int       @default(0) @map("is_read")
+  relatedId Int?      @map("related_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("message_info")
+}
+
+model RouteShare {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  routeId       Int       @map("route_id")
+  shareChannel  String    @map("share_channel")
+  posterUrl     String?   @map("poster_url")
+  posterStatus  Int       @default(0) @map("poster_status")
+  extra         Json?     @map("extra")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  route Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([routeId])
+  @@map("route_share")
+}
+
+model UserBehavior {
+  id         Int       @id @default(autoincrement())
+  userId     Int?      @map("user_id")
+  sessionId  String?   @map("session_id")
+  actionType String    @map("action_type")
+  targetType String?   @map("target_type")
+  targetId   Int?      @map("target_id")
+  keyword    String?   @map("keyword")
+  meta       Json?     @map("meta")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([actionType])
+  @@map("user_behavior")
+}
+
+// ============================================
+// 公共模型
+// ============================================
+
+model PoiInfo {
+  id           Int       @id @default(autoincrement())
+  poiUuid      String    @unique @map("poi_uuid")
+  poiType      String?   @map("poi_type")
+  typeCode     String?   @map("type_code")
+  poiName      Json      @map("poi_name")
+  description  Json?     @map("description")
+  longitude    Decimal   @db.Decimal(10, 7)
+  latitude     Decimal   @db.Decimal(10, 7)
+  address      Json?     @map("address")
+  tel          String?   @map("tel")
+  email        String?   @map("email")
+  photos       Json?     @map("photos")
+  streetView   String?   @map("street_view")
+  district     String?   @map("district")
+  isFree       Int       @default(0) @map("is_free")
+  needTickets  Int       @default(0) @map("need_tickets")
+  officialUrl  String?   @map("official_url")
+  needBook     Int       @default(0) @map("need_book")
+  status       Int       @default(1)
+  auditStatus  Int       @default(0) @map("audit_status")
+  auditRemark  String?   @map("audit_remark")
+  auditedBy    Int?      @map("audited_by")
+  auditedAt    DateTime? @map("audited_at")
+  createdBy    Int?      @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  poiTags      PoiTagRel[]
+  stats        PoiStats?
+  checks       CheckInfo[]
+  comments     CommentInfo[]
+  openingTimes OpeningTime[]
+  tickets      TicketInfo[]
+  merchantRels MerchantPoiRel[]
+  poiReviews   MerchantPoiReview[]
+  auditQueue   PoiAuditQueue?
+  createdByGov Government? @relation("PoiCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  auditedByGov Government?  @relation("PoiAuditor", fields: [auditedBy], references: [id], onDelete: SetNull)
+
+  @@index([poiUuid])
+  @@index([status])
+  @@index([district])
+  @@map("poi_info")
+}
+
+model PoiStats {
+  id           Int       @id @default(autoincrement())
+  poiId        Int       @unique @map("poi_id")
+  date         DateTime  @db.Date
+  checkCount   Int       @default(0) @map("check_count")
+  heatScore    Decimal   @db.Decimal(5, 2) @default(0) @map("heat_score")
+  avgStayTime  Decimal   @db.Decimal(5, 2) @default(0) @map("avg_stay_time")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  poi PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
+
+  @@unique([poiId, date])
+  @@map("poi_stats")
+}
+
+model TagInfo {
+  id        Int       @id @default(autoincrement())
+  level     Int       @default(1)
+  parentId  Int?      @map("parent_id")
+  tagCode   String    @unique @map("tag_code")
+  tagName   Json      @map("tag_name")
+  category  String?   @map("category")
+  status    Int       @default(1)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  poiTags PoiTagRel[]
+
+  @@index([tagCode])
+  @@index([category])
+  @@map("tag_info")
+}
+
+model PoiTagRel {
+  id        Int       @id @default(autoincrement())
+  poiId     Int       @map("poi_id")
+  tagId     Int       @map("tag_id")
+  weight    Decimal   @db.Decimal(3, 2) @default(0.5)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  poi PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  tag TagInfo @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([poiId, tagId])
+  @@map("poi_tag_rel")
+}
+
+model OpeningTime {
+  id        Int       @id @default(autoincrement())
+  poiId     Int       @map("poi_id")
+  type      String    @map("type")
+  value     String    @map("value")
+  time      Json      @map("time")
+  priority  Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  poi PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
+
+  @@index([poiId])
+  @@map("opening_time")
+}
+
+model TicketInfo {
+  id           Int       @id @default(autoincrement())
+  poiId        Int       @map("poi_id")
+  ticketName   Json      @map("ticket_name")
+  description  Json?     @map("description")
+  price        Decimal   @db.Decimal(10, 2) @map("price")
+  stock        Int       @default(0)
+  status       Int       @default(1)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  poi PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
+
+  @@index([poiId])
+  @@map("ticket_info")
+}
+
+// ============================================
+// 商户端模型
+// ============================================
+
+model Merchant {
+  id               Int       @id @default(autoincrement())
+  merchantName     String    @map("merchant_name")
+  tel              String    @unique @map("tel")
+  password         String    @map("password")
+  email            String?   @map("email")
+  contactPerson    String?   @map("contact_person")
+  businessLicense  String?   @map("business_license")
+  logo             String?   @map("logo")
+  merchantCategory String?   @map("merchant_category")
+  description      String?   @db.Text
+  status           Int       @default(0)
+  rejectReason     String?   @map("reject_reason")
+  lastLoginAt      DateTime? @map("last_login_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  poiRelations MerchantPoiRel[]
+  poiReviews   MerchantPoiReview[]
+  reviews      MerchantReview[]
+
+  @@index([status])
+  @@map("merchant")
+}
+
+model MerchantPoiRel {
+  id         Int       @id @default(autoincrement())
+  merchantId Int       @map("merchant_id")
+  poiId      Int       @map("poi_id")
+  isPrimary  Int       @default(0) @map("is_primary")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  poi      PoiInfo  @relation(fields: [poiId], references: [id], onDelete: Cascade)
+
+  @@unique([merchantId, poiId])
+  @@map("merchant_poi_rel")
+}
+
+model MerchantReview {
+  id            Int       @id @default(autoincrement())
+  merchantId    Int       @map("merchant_id")
+  action        String    @map("action")
+  statusBefore  Int       @map("status_before")
+  statusAfter   Int       @map("status_after")
+  remark        String?   @map("remark")
+  reviewerId    Int?      @map("reviewer_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  merchant Merchant    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  reviewer Government? @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([merchantId])
+  @@map("merchant_review")
+}
+
+model MerchantPoiReview {
+  id            Int       @id @default(autoincrement())
+  poiId         Int       @map("poi_id")
+  merchantId    Int       @map("merchant_id")
+  action        String    @map("action")
+  content       Json?     @map("content")
+  statusBefore  Int       @map("status_before")
+  statusAfter   Int       @map("status_after")
+  remark        String?   @map("remark")
+  reviewerId    Int?      @map("reviewer_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  poi      PoiInfo    @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  merchant Merchant   @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  reviewer Government? @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([poiId])
+  @@index([merchantId])
+  @@map("merchant_poi_review")
+}
+
+// ============================================
+// 政府端模型
+// ============================================
+
+model Government {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique @map("username")
+  tel          String    @unique @map("tel")
+  password     String    @map("password")
+  realName     String?   @map("real_name")
+  department   String?   @map("department")
+  role         Int       @default(1)
+  status       Int       @default(1)
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  contents          OfficialContent[]
+  poiAudits         GovernmentReview[]
+  poiAuditQueues   PoiAuditQueue[]
+  poiCreated        PoiInfo[] @relation("PoiCreator")
+  poiAudited        PoiInfo[] @relation("PoiAuditor")
+  merchantReviews   MerchantReview[]
+  merchantPoiReviews MerchantPoiReview[]
+  commentAuditQueues CommentAuditQueue[]
+  reports           ReportRecord[]
+
+  @@index([role])
+  @@map("government")
+}
+
+model GovernmentReview {
+  id          Int       @id @default(autoincrement())
+  reviewerId  Int       @map("reviewer_id")
+  targetType  String    @map("target_type")
+  targetId    Int       @map("target_id")
+  action      String    @map("action")
+  remark      String?   @map("remark")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  reviewer Government @relation(fields: [reviewerId], references: [id])
+
+  @@index([reviewerId])
+  @@map("government_review")
+}
+
+model PoiAuditQueue {
+  id            Int       @id @default(autoincrement())
+  poiId         Int       @unique @map("poi_id")
+  submitterType String    @map("submitter_type")
+  submitterId   Int       @map("submitter_id")
+  submitRemark  String?   @map("submit_remark")
+  priority      Int       @default(0)
+  status        Int       @default(0)
+  assignedTo    Int?      @map("assigned_to")
+  assignedAt    DateTime? @map("assigned_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  poi      PoiInfo     @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  assigned Government? @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("poi_audit_queue")
+}
+
+model CommentAuditQueue {
+  id            Int       @id @default(autoincrement())
+  commentId     Int       @unique @map("comment_id")
+  reportReason  String?   @map("report_reason")
+  reporterId    Int?      @map("reporter_id")
+  priority      Int       @default(0)
+  status        Int       @default(0)
+  assignedTo    Int?      @map("assigned_to")
+  assignedAt    DateTime? @map("assigned_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  comment   CommentInfo @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporter  User?       @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  assigned  Government? @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("comment_audit_queue")
+}
+
+model ReportRecord {
+  id           Int       @id @default(autoincrement())
+  reporterId   Int       @map("reporter_id")
+  targetType   String    @map("target_type")
+  targetId     Int       @map("target_id")
+  reason       String    @map("reason")
+  evidence     Json?     @map("evidence")
+  status       Int       @default(0)
+  handlerId    Int?      @map("handler_id")
+  handleResult String?   @map("handle_result")
+  handleTime   DateTime? @map("handle_time")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  reporter User        @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  handler  Government? @relation(fields: [handlerId], references: [id], onDelete: SetNull)
+
+  @@index([reporterId])
+  @@index([status])
+  @@map("report_record")
+}
+
+model AnalyticsDaily {
+  id            Int       @id @default(autoincrement())
+  date          DateTime  @unique @db.Date
+  totalUsers    Int       @default(0) @map("total_users")
+  newUsers      Int       @default(0) @map("new_users")
+  activeUsers   Int       @default(0) @map("active_users")
+  totalPois     Int       @default(0) @map("total_pois")
+  newPois       Int       @default(0) @map("new_pois")
+  totalChecks   Int       @default(0) @map("total_checks")
+  newChecks     Int       @default(0) @map("new_checks")
+  totalComments Int       @default(0) @map("total_comments")
+  newComments   Int       @default(0) @map("new_comments")
+  totalRoutes   Int       @default(0) @map("total_routes")
+  newRoutes     Int       @default(0) @map("new_routes")
+  totalContents Int       @default(0) @map("total_contents")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("analytics_daily")
+}
+
+model Announcement {
+  id            Int       @id @default(autoincrement())
+  title         String    @map("title")
+  content       String    @db.Text @map("content")
+  type          String    @map("type")
+  targetScope   String    @default("all") @map("target_scope")
+  publisherId   Int       @map("publisher_id")
+  publisherType String    @map("publisher_type")
+  status        Int       @default(1)
+  publishedAt   DateTime? @map("published_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([status])
+  @@map("announcement")
+}
+
+model OfficialContent {
+  id             Int       @id @default(autoincrement())
+  govId          Int       @map("gov_id")
+  title          Json      @map("title")
+  summary        Json?     @map("summary")
+  content        Json      @map("content")
+  contentType    String    @map("content_type")
+  coverImage     String?   @map("cover_image")
+  videoUrl       String?   @map("video_url")
+  category       String?   @map("category")
+  tags           Json?     @map("tags")
+  relatedPoiIds  Json?     @map("related_poi_ids")
+  viewCount      Int       @default(0) @map("view_count")
+  likeCount      Int       @default(0) @map("like_count")
+  status         Int       @default(1)
+  publishedAt    DateTime? @map("published_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  gov Government @relation(fields: [govId], references: [id])
+
+  @@index([govId])
+  @@index([status])
+  @@map("official_content")
+}

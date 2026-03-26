@@ -90,8 +90,7 @@ import { usePoiStore } from '../../stores/poi'
 import { useMessageStore } from '../../stores/message'
 import { useUserStore } from '../../stores/user'
 import { messageApi } from '../../api/message'
-import { amapAroundSearch, amapPoiToLocal } from '../../utils/amap-api'
-import { DEFAULT_CENTER, DEV_MOCK_LOCATION } from '../../utils/amap-config'
+import { poiApi } from '../../api/poi'
 import PreferenceModal from '../../components/PreferenceModal.vue'
 import AppIcon from '../../components/AppIcon.vue'
 
@@ -117,36 +116,36 @@ function formatDist(dist?: number) {
   return dist >= 1000 ? `${(dist / 1000).toFixed(1)}${t('common.km')}` : `${dist}${t('common.m')}`
 }
 
-async function loadAmapPois(lat: number, lng: number) {
+async function loadBackendPois() {
   try {
-    const result = await amapAroundSearch({ location: `${lng},${lat}`, radius: 5000, pageSize: 20 })
-    const list = result.pois.map(p => amapPoiToLocal(p))
-    poiStore.setNearbyList(list.slice(0, 5))
-    poiStore.setRecommendList(list)
+    const [recommendRes, nearbyRes] = await Promise.all([
+      poiApi.recommend({ page: 1, pageSize: 20 }),
+      poiApi.nearby({ latitude: 31.2304, longitude: 121.4737, radius: 5000, pageSize: 20 })
+    ])
+    poiStore.setRecommendList(recommendRes.list)
+    poiStore.setNearbyList(nearbyRes.list)
     noMore.value = true
   } catch (e) {
-    console.error('[Home] 高德 POI 加载失败:', e)
+    console.error('[Home] 后端 POI 加载失败:', e)
   }
 }
 
 async function loadData() {
-  const loc = DEV_MOCK_LOCATION
-  if (loc) {
-    await loadAmapPois(loc.latitude, loc.longitude)
-    return
-  }
-  uni.getLocation({
-    type: 'gcj02',
-    success: (res) => loadAmapPois(res.latitude, res.longitude),
-    fail: () => {
-      // 定位失败用默认中心点
-      loadAmapPois(DEFAULT_CENTER.latitude, DEFAULT_CENTER.longitude)
-    }
-  })
+  await loadBackendPois()
 }
 
 async function loadMore() {
-  // 高德数据一次性加载，无分页
+  // 分页加载推荐景点
+  if (noMore.value) return
+  page.value++
+  try {
+    const res = await poiApi.recommend({ page: page.value, pageSize: 20 })
+    if (res.list.length === 0) {
+      noMore.value = true
+    } else {
+      poiStore.setRecommendList([...poiStore.recommendList, ...res.list])
+    }
+  } catch {}
 }
 
 async function loadMessages() {

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="map-page">
     <!-- 地图（全屏） -->
     <map
@@ -423,9 +423,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePoiStore } from '../../stores/poi'
 import { useRouteStore } from '../../stores/route'
 import { DEFAULT_CENTER, DEFAULT_SCALE, isInShanghai, SHANGHAI_RECOMMENDED_POIS, DEV_MOCK_LOCATION } from '../../utils/amap-config'
-import { amapAroundSearch, amapPoiToLocal, planMultiSegmentRoute, amapTransitPlans, TRAVEL_MODES } from '../../utils/amap-api'
+import { planMultiSegmentRoute, amapTransitPlans, TRAVEL_MODES } from '../../utils/amap-api'
 import type { TravelMode, TransitPlan } from '../../utils/amap-api'
 import { routeApi } from '../../api/route'
+import { poiApi } from '../../api/poi'
 import type { POI } from '../../stores/poi'
 import AppIcon from '../../components/AppIcon.vue'
 
@@ -762,15 +763,31 @@ function formatDist(dist?: number) {
 }
 
 async function loadNearby(lat: number, lng: number) {
-  if (isRouteMode.value) return  // 路线模式下不请求高德，不刷新缓存
+  if (isRouteMode.value) return // 路线模式下不刷新附近景点
   const cat = poiCategories.find(c => c.key === selectedCategory.value)
   try {
-    const result = await amapAroundSearch({
-      location: `${lng},${lat}`,
+    const res = await poiApi.nearby({
+      latitude: lat,
+      longitude: lng,
       radius: 5000,
-      types: cat?.types
+      pageSize: 50
     })
-    const list = result.pois.map(amapPoiToLocal) as POI[]
+    let list = res.list
+    // 如果选择了特定类别，过滤
+    if (cat && cat.key !== 'all') {
+      // 根据类别关键词过滤
+      const keywords: Record<string, string[]> = {
+        scenic: ['景点', '风景', '公园'],
+        museum: ['博物馆', '展览', '馆'],
+        park: ['公园', '园林', '绿化'],
+        food: ['美食', '餐厅', '餐饮', '小吃'],
+        shopping: ['购物', '商场', '超市', '商店']
+      }
+      const kws = keywords[cat.key] || []
+      if (kws.length > 0) {
+        list = list.filter(p => kws.some(k => (p.name + p.category + (p.description || '')).includes(k)))
+      }
+    }
     poiStore.setNearbyList(list)
   } catch {
     uni.showToast({ title: '加载附近景点失败', icon: 'none' })

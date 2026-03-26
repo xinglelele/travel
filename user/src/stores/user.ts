@@ -2,19 +2,38 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 export interface UserPreference {
-    travelType: string[]
-    interests: string[]
-    transports: string[]
+    fromRegion?: number
+    preferenceTags?: {
+        intensity?: string[]
+        interests?: string[]
+        theme?: string[]
+        cuisine?: string[]
+        mood?: string[]
+    }
+    hasCompletedOnboarding?: number
 }
 
 export interface UserInfo {
-    id: string
-    openid: string
-    nickname: string
-    avatar: string
-    phone?: string
+    id: number
+    tel?: string
+    nickname?: string
+    avatar?: string
     gender?: number
+    locale: string
+    registerType: number
+    isAnonymous: boolean
+    aiPlanRemaining: number
+    preference?: UserPreference
+    createdAt?: string
 }
+
+/** 注册类型枚举 */
+export const RegisterType = {
+    Anonymous: 0,
+    Wechat: 1,
+    Phone: 2,
+    WechatPhone: 3
+} as const
 
 export const useUserStore = defineStore('user', () => {
     const token = ref<string>(uni.getStorageSync('token') || '')
@@ -24,15 +43,42 @@ export const useUserStore = defineStore('user', () => {
     const locale = ref<string>(uni.getStorageSync('locale') || 'zh-CN')
     const pendingPreference = ref<UserPreference | null>(null)
 
+    /** 是否已登录（包括匿名登录） */
     const isLoggedIn = computed(() => !!token.value)
+
+    /** 是否是匿名用户 */
+    const isAnonymous = computed(() => userInfo.value?.isAnonymous ?? true)
+
+    /** 是否是正式用户（微信或手机登录） */
+    const isRegistered = computed(() =>
+        !!token.value && !isAnonymous.value
+    )
+
+    /** 是否需要绑定手机号 */
+    const needPhoneBind = computed(() =>
+        userInfo.value?.isAnonymous === false && !userInfo.value?.tel
+    )
+
+    /** AI规划剩余次数 */
+    const aiPlanRemaining = computed(() =>
+        userInfo.value?.aiPlanRemaining ?? 0
+    )
 
     function setToken(t: string) {
         token.value = t
-        uni.setStorageSync('token', t)
+        if (t) {
+            uni.setStorageSync('token', t)
+        } else {
+            uni.removeStorageSync('token')
+        }
     }
 
     function setUserInfo(info: UserInfo) {
         userInfo.value = info
+        if (info.preference) {
+            preference.value = info.preference
+            hasSetPreference.value = true
+        }
     }
 
     function setPreference(pref: UserPreference) {
@@ -57,24 +103,44 @@ export const useUserStore = defineStore('user', () => {
         userInfo.value = null
         preference.value = null
         hasSetPreference.value = false
+        pendingPreference.value = null
         uni.removeStorageSync('token')
     }
 
     function loadFromStorage() {
         const savedPref = uni.getStorageSync('preference')
         if (savedPref) {
-            preference.value = JSON.parse(savedPref)
-            hasSetPreference.value = true
+            try {
+                preference.value = JSON.parse(savedPref)
+                hasSetPreference.value = true
+            } catch {}
         }
         const savedPending = uni.getStorageSync('pendingPreference')
         if (savedPending) {
-            pendingPreference.value = JSON.parse(savedPending)
+            try {
+                pendingPreference.value = JSON.parse(savedPending)
+            } catch {}
         }
     }
 
     return {
-        token, userInfo, preference, hasSetPreference, locale, pendingPreference,
+        token,
+        userInfo,
+        preference,
+        hasSetPreference,
+        locale,
+        pendingPreference,
         isLoggedIn,
-        setToken, setUserInfo, setPreference, setPendingPreference, setLocale, logout, loadFromStorage
+        isAnonymous,
+        isRegistered,
+        needPhoneBind,
+        aiPlanRemaining,
+        setToken,
+        setUserInfo,
+        setPreference,
+        setPendingPreference,
+        setLocale,
+        logout,
+        loadFromStorage
     }
 })
