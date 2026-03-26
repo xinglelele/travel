@@ -1,0 +1,223 @@
+{
+    "common": {
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "save": "Save",
+        "delete": "Delete",
+        "edit": "Edit",
+        "back": "Back",
+        "loading": "Loading...",
+        "noMore": "No more data",
+        "empty": "No data available",
+        "error": "Load failed, please retry",
+        "retry": "Retry",
+        "submit": "Submit",
+        "search": "Search",
+        "all": "All",
+        "more": "More",
+        "close": "Close",
+        "share": "Share",
+        "collect": "Collect",
+        "collected": "Collected",
+        "navigate": "Navigate",
+        "distance": "Distance",
+        "km": "km",
+        "m": "m"
+    },
+    "tabBar": {
+        "home": "Home",
+        "map": "Map",
+        "discover": "Discover",
+        "profile": "Profile"
+    },
+    "home": {
+        "searchPlaceholder": "Search attractions, routes, guides...",
+        "banner": "Featured",
+        "aiEntry": "AI Trip Planner",
+        "aiDesc": "Generate your personalized travel route",
+        "nearbyTitle": "Nearby Attractions",
+        "recommendTitle": "Recommended for You",
+        "hotTitle": "Hot Content"
+    },
+    "map": {
+        "title": "Map Guide",
+        "heatmap": "Heatmap",
+        "nearby": "Nearby",
+        "searchHere": "Search here",
+        "locating": "Locating...",
+        "locationFailed": "Location failed",
+        "poiCount": "attractions",
+        "openDetail": "View Details"
+    },
+    "discover": {
+        "title": "Discover",
+        "all": "All",
+        "scenic": "Scenic",
+        "museum": "Museum",
+        "park": "Park",
+        "food": "Food",
+        "shopping": "Shopping",
+        "noContent": "No content available"
+    },
+    "profile": {
+        "title": "Profile",
+        "login": "Tap to Login",
+        "loginDesc": "Login to enjoy more features",
+        "myRoutes": "My Routes",
+        "myChecks": "Check-ins",
+        "myCollects": "Favorites",
+        "myComments": "My Reviews",
+        "messages": "Messages",
+        "settings": "Settings",
+        "editProfile": "Edit Profile"
+    },
+    "poi": {
+        "detail": "Attraction Detail",
+        "openTime": "Opening Hours",
+        "ticket": "Ticket",
+        "free": "Free",
+        "phone": "Phone",
+        "address": "Address",
+        "description": "Description",
+        "comments": "Reviews",
+        "relatedRoutes": "Related Routes",
+        "checkIn": "Check In",
+        "checkedIn": "Checked In",
+        "addComment": "Write a Review",
+        "viewAllComments": "View All Reviews"
+    },
+    "route": {
+        "plan": "Route Planner",
+        "inputPlaceholder": "Tell AI your travel preferences...",
+        "voiceInput": "Voice Input",
+        "quickTags": "Quick Tags",
+        "history": "History",
+        "generating": "AI is planning your route...",
+        "generateBtn": "Start Planning",
+        "detail": "Route Detail",
+        "days": "days",
+        "day": "Day {n}",
+        "totalPoi": "{n} attractions",
+        "myRoutes": "My Routes",
+        "deleteConfirm": "Delete this route?",
+        "noRoutes": "No routes yet, plan one now",
+        "overview": "Overview",
+        "mapPreview": "Map Preview",
+        "startNavigation": "Start Navigation",
+        "saveRoute": "Save Route",
+        "tags": {
+            "family": "Family",
+            "couple": "Couple",
+            "solo": "Solo",
+            "group": "Group",
+            "budget": "Budget",
+            "luxury": "Luxury",
+            "oneDay": "1 Day",
+            "twoDay": "2 Days",
+            "threeDay": "3 Days"
+        }
+    },
+    "comment": {
+        "create": "Write a Review",
+        "rating": "Rating",
+        "placeholder": "Share your travel experience...",
+        "uploadPhoto": "Upload Photos",
+        "list": "All Reviews",
+        "sortByTime": "Latest",
+        "sortByRating": "Highest",
+        "noComments": "No reviews yet, be the first",
+        "anonymous": "Anonymous",
+        "helpful": "Helpful",
+        "reply": "Reply"
+    },
+    "search": {
+        "title": "Search",
+        "placeholder": "Search attractions, routes, guides...",
+        "history": "Search History",
+        "clearHistory": "Clear History",
+        "hot": "Hot Searches",
+        "suggest": "Suggestions",
+        "noResult": "No results found",
+        "resultCount": "{n} results",
+        "tabs": {
+            "all": "All",
+            "poi": "Attractions",
+            "route": "Routes",
+            "content": "Guides"
+        }
+    },
+    "message": {
+        "title": "Messages",
+        "markAllRead": "Mark All Read",
+        "noMessages": "No messages",
+        "types": {
+            "system": "System",
+            "route": "Route",
+            "comment": "Comment",
+            "activity": "Activity"
+        }
+    },
+    "setting": {
+        "title": "Settings",
+        "language": "Language",
+        "notification": "Notifications",
+        "privacy": "Privacy",
+        "about": "About",
+        "feedback": "Feedback",
+        "logout": "Log Out",
+        "logoutConfirm": "Confirm log out?",
+        "version": "Version",
+        "clearCache": "Clear Cache",
+        "cacheCleared": "Cache cleared"
+    },
+    "check": {
+        "title": "Check-ins",
+        "listView": "List",
+        "mapView": "Map",
+        "total": "{n} check-ins",
+        "noChecks": "No check-ins yet",
+        "checkSuccess": "Checked in",
+        "alreadyChecked": "Already checked in today"
+    },
+    "preference": {
+        "title": "Preferences",
+        "subtitle": "Help us recommend better content for you",
+        "step1": "Travel Type",
+        "step2": "Interests",
+        "step3": "Transport",
+        "next": "Next",
+        "finish": "Done",
+        "skip": "Skip",
+        "back": "Back",
+        "types": {
+            "family": "Family",
+            "couple": "Couple",
+            "solo": "Solo",
+            "group": "Group",
+            "senior": "Senior"
+        },
+        "interests": {
+            "scenery": "Scenery",
+            "culture": "Culture",
+            "food": "Food",
+            "adventure": "Adventure",
+            "photography": "Photography",
+            "shopping": "Shopping"
+        },
+        "transports": {
+            "walk": "Walking",
+            "bike": "Cycling",
+            "car": "Driving",
+            "public": "Public Transit"
+        }
+    },
+    "auth": {
+        "loginTitle": "Welcome to Tourism Guide",
+        "loginDesc": "Login to enjoy AI planning, check-ins and more",
+        "wechatLogin": "Login with WeChat",
+        "agreement": "By logging in, you agree to",
+        "userAgreement": "User Agreement",
+        "privacyPolicy": "Privacy Policy",
+        "and": "and"
+    }
+}

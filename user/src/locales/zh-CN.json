@@ -1,0 +1,223 @@
+{
+    "common": {
+        "confirm": "确认",
+        "cancel": "取消",
+        "save": "保存",
+        "delete": "删除",
+        "edit": "编辑",
+        "back": "返回",
+        "loading": "加载中...",
+        "noMore": "没有更多了",
+        "empty": "暂无数据",
+        "error": "加载失败，请重试",
+        "retry": "重试",
+        "submit": "提交",
+        "search": "搜索",
+        "all": "全部",
+        "more": "更多",
+        "close": "关闭",
+        "share": "分享",
+        "collect": "收藏",
+        "collected": "已收藏",
+        "navigate": "导航",
+        "distance": "距离",
+        "km": "公里",
+        "m": "米"
+    },
+    "tabBar": {
+        "home": "首页",
+        "map": "地图",
+        "discover": "发现",
+        "profile": "我的"
+    },
+    "home": {
+        "searchPlaceholder": "搜索景点、路线、攻略...",
+        "banner": "精选推荐",
+        "aiEntry": "AI智能规划",
+        "aiDesc": "一键生成专属旅游路线",
+        "nearbyTitle": "附近景点",
+        "recommendTitle": "为你推荐",
+        "hotTitle": "热门内容"
+    },
+    "map": {
+        "title": "地图导览",
+        "heatmap": "热力图",
+        "nearby": "附近",
+        "searchHere": "在此搜索",
+        "locating": "定位中...",
+        "locationFailed": "定位失败",
+        "poiCount": "个景点",
+        "openDetail": "查看详情"
+    },
+    "discover": {
+        "title": "发现",
+        "all": "全部",
+        "scenic": "景点",
+        "museum": "博物馆",
+        "park": "公园",
+        "food": "美食",
+        "shopping": "购物",
+        "noContent": "暂无内容"
+    },
+    "profile": {
+        "title": "我的",
+        "login": "点击登录",
+        "loginDesc": "登录后享受更多功能",
+        "myRoutes": "我的路线",
+        "myChecks": "打卡记录",
+        "myCollects": "我的收藏",
+        "myComments": "我的评论",
+        "messages": "消息通知",
+        "settings": "设置",
+        "editProfile": "编辑资料"
+    },
+    "poi": {
+        "detail": "景点详情",
+        "openTime": "开放时间",
+        "ticket": "门票",
+        "free": "免费",
+        "phone": "联系电话",
+        "address": "地址",
+        "description": "简介",
+        "comments": "评论",
+        "relatedRoutes": "相关路线",
+        "checkIn": "打卡",
+        "checkedIn": "已打卡",
+        "addComment": "写评论",
+        "viewAllComments": "查看全部评论"
+    },
+    "route": {
+        "plan": "路线规划",
+        "inputPlaceholder": "告诉AI你的旅行偏好...",
+        "voiceInput": "语音输入",
+        "quickTags": "快捷标签",
+        "history": "历史记录",
+        "generating": "AI正在规划路线...",
+        "generateBtn": "开始规划",
+        "detail": "路线详情",
+        "days": "天",
+        "day": "第{n}天",
+        "totalPoi": "共{n}个景点",
+        "myRoutes": "我的路线",
+        "deleteConfirm": "确认删除该路线？",
+        "noRoutes": "还没有路线，去规划一条吧",
+        "overview": "路线概览",
+        "mapPreview": "地图预览",
+        "startNavigation": "开始导航",
+        "saveRoute": "保存路线",
+        "tags": {
+            "family": "亲子游",
+            "couple": "情侣游",
+            "solo": "独自游",
+            "group": "团队游",
+            "budget": "经济型",
+            "luxury": "豪华型",
+            "oneDay": "一日游",
+            "twoDay": "两日游",
+            "threeDay": "三日游"
+        }
+    },
+    "comment": {
+        "create": "发表评论",
+        "rating": "评分",
+        "placeholder": "分享你的旅行体验...",
+        "uploadPhoto": "上传图片",
+        "list": "全部评论",
+        "sortByTime": "最新",
+        "sortByRating": "最高分",
+        "noComments": "暂无评论，来第一个评论吧",
+        "anonymous": "匿名用户",
+        "helpful": "有用",
+        "reply": "回复"
+    },
+    "search": {
+        "title": "搜索",
+        "placeholder": "搜索景点、路线、攻略...",
+        "history": "搜索历史",
+        "clearHistory": "清除历史",
+        "hot": "热门搜索",
+        "suggest": "搜索建议",
+        "noResult": "未找到相关结果",
+        "resultCount": "共{n}个结果",
+        "tabs": {
+            "all": "综合",
+            "poi": "景点",
+            "route": "路线",
+            "content": "攻略"
+        }
+    },
+    "message": {
+        "title": "消息",
+        "markAllRead": "全部已读",
+        "noMessages": "暂无消息",
+        "types": {
+            "system": "系统通知",
+            "route": "路线推送",
+            "comment": "评论回复",
+            "activity": "活动提醒"
+        }
+    },
+    "setting": {
+        "title": "设置",
+        "language": "语言",
+        "notification": "消息通知",
+        "privacy": "隐私设置",
+        "about": "关于我们",
+        "feedback": "意见反馈",
+        "logout": "退出登录",
+        "logoutConfirm": "确认退出登录？",
+        "version": "版本",
+        "clearCache": "清除缓存",
+        "cacheCleared": "缓存已清除"
+    },
+    "check": {
+        "title": "打卡记录",
+        "listView": "列表",
+        "mapView": "地图",
+        "total": "共打卡{n}处",
+        "noChecks": "还没有打卡记录",
+        "checkSuccess": "打卡成功",
+        "alreadyChecked": "今日已打卡"
+    },
+    "preference": {
+        "title": "偏好设置",
+        "subtitle": "帮助我们为你推荐更好的内容",
+        "step1": "旅行类型",
+        "step2": "兴趣偏好",
+        "step3": "出行方式",
+        "next": "下一步",
+        "finish": "完成",
+        "skip": "跳过",
+        "back": "上一步",
+        "types": {
+            "family": "亲子",
+            "couple": "情侣",
+            "solo": "独行",
+            "group": "团队",
+            "senior": "老年"
+        },
+        "interests": {
+            "scenery": "自然风光",
+            "culture": "历史文化",
+            "food": "美食体验",
+            "adventure": "户外探险",
+            "photography": "摄影打卡",
+            "shopping": "购物娱乐"
+        },
+        "transports": {
+            "walk": "步行",
+            "bike": "骑行",
+            "car": "自驾",
+            "public": "公共交通"
+        }
+    },
+    "auth": {
+        "loginTitle": "欢迎使用文旅导览",
+        "loginDesc": "登录后享受AI路线规划、打卡等功能",
+        "wechatLogin": "微信一键登录",
+        "agreement": "登录即同意",
+        "userAgreement": "用户协议",
+        "privacyPolicy": "隐私政策",
+        "and": "和"
+    }
+}
