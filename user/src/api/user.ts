@@ -4,10 +4,11 @@ import { get, post, put } from './request'
 export interface LoginResult {
     token: string
     userId: number
-    isAnonymous: boolean
-    aiPlanRemaining: number
+    isAnonymous?: boolean
+    aiPlanRemaining?: number
     isNewUser?: boolean
     needPhoneBind?: boolean
+    message?: string
 }
 
 /** 微信登录参数 */
@@ -51,6 +52,8 @@ export interface UserInfo {
     registerType: number
     isAnonymous: boolean
     aiPlanRemaining: number
+    /** 正式用户未填昵称或头像时为 true，需跳转完善资料 */
+    needProfileSetup?: boolean
     preference?: UserPreference
     createdAt?: string
 }
@@ -108,7 +111,7 @@ export const userApi = {
      * 手机号登录
      * @param phone 手机号
      * @param password 密码
-     * @param code 验证码（注册时需要）
+     * @param code 验证码（可选；新用户注册时若填写则校验）
      */
     phoneLogin: (phone: string, password: string, code?: string) =>
         post<LoginResult>('/api/user/phone-login', { phone, password, code }),

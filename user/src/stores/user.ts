@@ -23,6 +23,7 @@ export interface UserInfo {
     registerType: number
     isAnonymous: boolean
     aiPlanRemaining: number
+    needProfileSetup?: boolean
     preference?: UserPreference
     createdAt?: string
 }

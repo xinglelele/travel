@@ -48,27 +48,52 @@ export function request<T = unknown>(options: RequestOptions): Promise<T> {
             data: options.data,
             header,
             success: (res) => {
-                const response = res.data as ApiResponse<T>
+                const raw = res.data
+                const body =
+                    raw !== null && typeof raw === 'object' && 'code' in raw
+                        ? (raw as ApiResponse<T>)
+                        : null
+                const errMsg =
+                    body?.message ||
+                    (typeof raw === 'string' && raw.trim() ? raw : '')
+
                 if (res.statusCode === 401) {
-                    // 可选认证接口的 401 不触发登出
+                    // 可选认证接口的 401 不触发登出、不弹 toast（由调用方处理）
                     if (!options.optionalAuth) {
                         uni.removeStorageSync('token')
                         uni.switchTab({ url: '/pages/home/index' })
+                        const msg = errMsg || '登录已过期'
+                        uni.showToast({ title: msg, icon: 'none' })
+                        reject(new Error(msg))
+                    } else {
+                        reject(new Error(errMsg || '登录已过期'))
                     }
-                    reject(new Error('登录已过期'))
                     return
                 }
+
                 if (res.statusCode >= 200 && res.statusCode < 300) {
-                    if (response.code === 0) {
-                        resolve(response.data)
+                    if (body && body.code === 0) {
+                        resolve(body.data as T)
+                    } else if (body) {
+                        uni.showToast({ title: body.message || '请求失败', icon: 'none' })
+                        reject(new Error(body.message || '请求失败'))
                     } else {
-                        uni.showToast({ title: response.message || '请求失败', icon: 'none' })
-                        reject(new Error(response.message))
+                        uni.showToast({ title: '数据异常', icon: 'none' })
+                        reject(new Error('数据异常'))
                     }
-                } else {
-                    uni.showToast({ title: '网络错误', icon: 'none' })
-                    reject(new Error(`HTTP ${res.statusCode}`))
+                    return
                 }
+
+                // 4xx/5xx：解析后端 JSON 中的 message（如 phone-login 返回 400）
+                if (res.statusCode >= 400) {
+                    const msg = errMsg || `请求失败 (${res.statusCode})`
+                    uni.showToast({ title: msg, icon: 'none' })
+                    reject(new Error(msg))
+                    return
+                }
+
+                uni.showToast({ title: '网络错误', icon: 'none' })
+                reject(new Error(`HTTP ${res.statusCode}`))
             },
             fail: () => {
                 uni.showToast({ title: '网络连接失败', icon: 'none' })

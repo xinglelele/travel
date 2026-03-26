@@ -20,7 +20,7 @@ export const routeApi = {
 
     /** 获取我的路线列表 */
     my: (params?: { page?: number; pageSize?: number }) =>
-        get<{ list: TravelRoute[]; total: number }>('/api/route/my', params as Record<string, unknown>),
+        get<{ list: TravelRoute[]; total: number }>('/api/route/my', params as Record<string, unknown>, false),
 
     /** 删除路线 */
     delete: (id: string) =>

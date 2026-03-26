@@ -139,10 +139,16 @@ export class UserService {
     userId?: number
     message: string
     needPassword?: boolean
+    isNewUser?: boolean
   }> {
+    const normalizedPhone = String(phone ?? '').trim()
+    if (!normalizedPhone) {
+      return { success: false, message: '请输入手机号' }
+    }
+
     // 查询用户
     let user = await prisma.user.findUnique({
-      where: { tel: phone },
+      where: { tel: normalizedPhone },
     })
 
     if (user) {
@@ -172,28 +178,23 @@ export class UserService {
         token,
         userId: user.id,
         message: '登录成功',
+        isNewUser: false,
       }
     } else {
-      // 用户不存在，需要验证码注册
-      if (!code) {
-        return {
-          success: false,
-          message: '请输入验证码',
+      // 新用户：手机号 + 密码直接注册；若传了 code 则校验验证码（辅助手段）
+      if (code) {
+        const verifyResult = await smsService.verifyCode(normalizedPhone, code, 'login')
+        if (!verifyResult.valid) {
+          return { success: false, message: verifyResult.message }
         }
-      }
-
-      // 验证验证码
-      const verifyResult = await smsService.verifyCode(phone, code, 'login')
-      if (!verifyResult.valid) {
-        return { success: false, message: verifyResult.message }
       }
 
       // 创建新用户
       const hashedPassword = await bcrypt.hash(password, 10)
       user = await prisma.user.create({
         data: {
-          tel: phone,
-          openid: `phone_${phone}_${Date.now()}`,
+          tel: normalizedPhone,
+          openid: `phone_${normalizedPhone}_${Date.now()}`,
           password: hashedPassword,
           registerType: RegisterType.Phone,
           aiPlanCount: AI_PLAN_LIMITS[RegisterType.Phone],
@@ -206,6 +207,7 @@ export class UserService {
         token,
         userId: user.id,
         message: '注册成功',
+        isNewUser: true,
       }
     }
   }
@@ -517,6 +519,10 @@ export class UserService {
       return null
     }
 
+    const needProfileSetup =
+      user.registerType !== RegisterType.Anonymous &&
+      (!user.nickname?.trim() || !user.avatar?.trim())
+
     return {
       id: user.id,
       tel: user.tel,
@@ -527,6 +533,7 @@ export class UserService {
       registerType: user.registerType,
       isAnonymous: user.registerType === RegisterType.Anonymous,
       aiPlanRemaining: user.aiPlanCount,
+      needProfileSetup,
       preference: user.preference
         ? {
             fromRegion: user.preference.fromRegion,
@@ -555,6 +562,10 @@ export class UserService {
       data,
     })
 
+    const needProfileSetup =
+      user.registerType !== RegisterType.Anonymous &&
+      (!user.nickname?.trim() || !user.avatar?.trim())
+
     return {
       id: user.id,
       tel: user.tel,
@@ -562,6 +573,7 @@ export class UserService {
       avatar: user.avatar,
       gender: user.gender,
       locale: user.locale,
+      needProfileSetup,
     }
   }
 

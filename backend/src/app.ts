@@ -5,6 +5,7 @@ import { errorHandler } from './shared/middleware/errorHandler'
 
 import userRoutes from './modules/user/user.routes'
 import poiRoutes from './modules/poi/poi.routes'
+import routeRoutes from './modules/route/route.routes'
 import messageRoutes from './modules/message/message.routes'
 import contentRoutes from './modules/content/content.routes'
 
@@ -24,6 +25,7 @@ export function createApp(): Express {
   // API 路由
   app.use('/api/user', userRoutes)
   app.use('/api/poi', poiRoutes)
+  app.use('/api/route', routeRoutes)
   app.use('/api/message', messageRoutes)
   app.use('/api/content', contentRoutes)
 

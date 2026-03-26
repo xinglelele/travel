@@ -160,39 +160,6 @@ router.get('/heatmap', async (req, res, next) => {
   }
 })
 
-// 获取景点详情 - 公共接口
-router.get('/:id', async (req, res, next) => {
-  try {
-    const { id } = req.params
-
-    const poi = await prisma.poiInfo.findUnique({
-      where: { poiUuid: id },
-      include: {
-        poiTags: { include: { tag: true } },
-        stats: true,
-        tickets: { where: { status: 1 } },
-        openingTimes: true
-      }
-    })
-
-    if (!poi) {
-      return res.status(404).json({ code: 404, message: '景点不存在', data: null })
-    }
-
-    res.json({
-      code: 0,
-      message: 'success',
-      data: transformPoi(poi)
-    })
-  } catch (error) {
-    next(error)
-  }
-})
-
-// =============================================
-// 可选认证接口（登录可选，不影响匿名访问）
-// =============================================
-
 // 获取推荐景点列表（可选认证，登录时返回个性化推荐）
 router.get('/recommend', optionalAuth, async (req, res, next) => {
   try {
@@ -252,6 +219,43 @@ router.get('/recommend', optionalAuth, async (req, res, next) => {
     next(error)
   }
 })
+
+// 获取景点详情 - 公共接口
+router.get('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params
+
+    const poi = await prisma.poiInfo.findUnique({
+      where: { poiUuid: id },
+      include: {
+        poiTags: { include: { tag: true } },
+        stats: true,
+        tickets: { where: { status: 1 } },
+        openingTimes: true
+      }
+    })
+
+    if (!poi) {
+      return res.status(404).json({ code: 404, message: '景点不存在', data: null })
+    }
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: transformPoi(poi)
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// =============================================
+// 可选认证接口（登录可选，不影响匿名访问）
+// =============================================
+
+// =============================================
+// 可选认证接口（登录可选，不影响匿名访问）
+// =============================================
 
 // AI路线规划（可选认证，匿名用户限制次数）
 router.post('/ai-plan', optionalAuth, async (req, res, next) => {

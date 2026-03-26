@@ -41,7 +41,8 @@ class UserController {
    */
   async phoneLogin(req: Request, res: Response, next: NextFunction) {
     try {
-      const { phone, password, code } = req.body
+      const phone = String(req.body.phone ?? '').trim()
+      const { password, code } = req.body
       if (!phone) {
         return errorResponse(res, '请输入手机号', 400)
       }
@@ -57,6 +58,7 @@ class UserController {
         token: result.token,
         userId: result.userId,
         message: result.message,
+        isNewUser: result.isNewUser ?? false,
       })
     } catch (error) {
       next(error)

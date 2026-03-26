@@ -17,11 +17,20 @@ onLaunch(async () => {
     }
   }
 
-  // 已登录时刷新用户信息
+  // 已登录时刷新用户信息；正式用户未完善资料则进入资料页
   if (userStore.isLoggedIn) {
     try {
       const info = await userApi.profile()
       userStore.setUserInfo(info)
+      if (info.needProfileSetup) {
+        setTimeout(() => {
+          const pages = getCurrentPages()
+          const route = pages[pages.length - 1]?.route
+          if (route !== 'pages/onboarding/setup') {
+            uni.redirectTo({ url: '/pages/onboarding/setup' })
+          }
+        }, 0)
+      }
     } catch {}
   }
 })

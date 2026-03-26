@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '../../stores/user'
 import { useRouteStore } from '../../stores/route'
@@ -84,19 +84,9 @@ const unreadCount = computed(() => messageStore.unreadCount)
 const routeCount = computed(() => routeStore.myRoutes.length)
 const checkCount = ref(0)
 
-import { ref } from 'vue'
-
 async function doLogin() {
-  uni.login({
-    provider: 'weixin',
-    success: async (res) => {
-      try {
-        const result = await userApi.login({ code: res.code })
-        userStore.setToken(result.token)
-        userStore.setUserInfo(result.userInfo)
-      } catch {}
-    }
-  })
+  // 跳转到手机号登录页面
+  uni.navigateTo({ url: '/pages/login/index' })
 }
 
 async function loadData() {

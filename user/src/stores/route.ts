@@ -9,11 +9,13 @@ export interface RouteDay {
 }
 
 export interface TravelRoute {
-    id: string
-    title: string
+    id: string | number
+    name: string
+    title?: string
     days: number
-    totalPoi: number
-    schedule: RouteDay[]
+    totalPoi?: number
+    poiCount?: number
+    schedule?: RouteDay[]
     tags?: string[]
     createdAt: string
     coverImage?: string

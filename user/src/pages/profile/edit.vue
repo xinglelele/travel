@@ -50,7 +50,7 @@ onMounted(() => {
     form.value = {
       nickname: userStore.userInfo.nickname || '',
       avatar: userStore.userInfo.avatar || '',
-      phone: userStore.userInfo.phone || '',
+      phone: userStore.userInfo.tel || '',
       gender: userStore.userInfo.gender ?? 0
     }
   }

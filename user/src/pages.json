@@ -144,6 +144,20 @@
 			"style": {
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "登录"
+			}
+		},
+		{
+			"path": "pages/onboarding/setup",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "完善资料"
+			}
 		}
 	],
 	"tabBar": {
