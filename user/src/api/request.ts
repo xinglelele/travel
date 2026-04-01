@@ -41,11 +41,22 @@ export function request<T = unknown>(options: RequestOptions): Promise<T> {
     }
     if (token) header['Authorization'] = `Bearer ${token}`
 
+    const m = (options.method || 'GET').toUpperCase()
+    // 微信小程序端：对象 data 有时不会按 JSON 写入 body，express.json() 解析后 req.body 为空
+    let requestBody: string | Record<string, unknown> | undefined = options.data
+    if (
+        options.data &&
+        typeof options.data === 'object' &&
+        (m === 'POST' || m === 'PUT' || m === 'DELETE')
+    ) {
+        requestBody = JSON.stringify(options.data)
+    }
+
     return new Promise((resolve, reject) => {
         uni.request({
             url: `${BASE_URL}${options.url}`,
             method: options.method || 'GET',
-            data: options.data,
+            data: requestBody,
             header,
             success: (res) => {
                 const raw = res.data

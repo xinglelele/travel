@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 export interface POI {
     id: string
+    poiId?: number  // 数据库主键，AI生成时由后端回填
     name: string
     category: string
     description: string

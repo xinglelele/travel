@@ -17,6 +17,14 @@
       @regionchange="onRegionChange"
     />
 
+    <!-- 热力图画布叠加层 -->
+    <canvas
+      v-if="showHeatmap"
+      canvas-id="heatmap-canvas"
+      class="heatmap-canvas"
+      :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }"
+    />
+
     <!-- 可拖动悬浮控制面板 -->
     <view
       class="float-panel"
@@ -142,8 +150,8 @@
             @tap="loadSavedRoute(route)"
           >
             <view class="route-selector-info">
-              <text class="route-selector-name">{{ route.title }}</text>
-              <text class="route-selector-meta">{{ route.days }}天 · {{ route.totalPoi }}个景点</text>
+              <text class="route-selector-name">{{ route.name }}</text>
+              <text class="route-selector-meta">{{ route.days }}天 · {{ route.poiCount || 0 }}个景点</text>
               <!-- 简要 POI 预览 -->
               <view class="route-selector-pois">
                 <text
@@ -419,8 +427,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { usePoiStore } from '../../stores/poi'
+import { useUserStore } from '../../stores/user'
 import { useRouteStore } from '../../stores/route'
 import { DEFAULT_CENTER, DEFAULT_SCALE, isInShanghai, SHANGHAI_RECOMMENDED_POIS, DEV_MOCK_LOCATION } from '../../utils/amap-config'
 import { planMultiSegmentRoute, amapTransitPlans, TRAVEL_MODES } from '../../utils/amap-api'
@@ -432,6 +441,7 @@ import AppIcon from '../../components/AppIcon.vue'
 
 const poiStore = usePoiStore()
 const routeStore = useRouteStore()
+const userStore = useUserStore()
 
 // 地图状态
 const mapCenter = ref({ latitude: DEFAULT_CENTER.latitude, longitude: DEFAULT_CENTER.longitude })
@@ -604,6 +614,116 @@ const transitPlanLoading = ref(false)
 let pendingTransitDayIdx = -1
 let pendingTransitItemIdx = -1
 
+// ============================================
+// 热力图画布
+// ============================================
+const canvasWidth = ref(375)
+const canvasHeight = ref(600)
+const heatmapCtx = ref<UniApp.CanvasContext | null>(null)
+const heatmapData = ref<Array<{ latitude: number; longitude: number; weight: number }>>([])
+
+// 监听热力图开关，加载数据并绘制
+watch(showHeatmap, async (val) => {
+  if (val) {
+    await loadHeatmapData()
+    await nextTick()
+    initHeatmapCanvas()
+    drawHeatmap()
+  }
+})
+
+// 监听地图视野变化，重新绘制热力图
+watch(mapCenter, () => {
+  if (showHeatmap.value) {
+    drawHeatmap()
+  }
+})
+
+watch(mapScale, () => {
+  if (showHeatmap.value) {
+    drawHeatmap()
+  }
+})
+
+async function loadHeatmapData() {
+  try {
+    const res = await poiApi.heatmap({
+      latitude: mapCenter.value.latitude,
+      longitude: mapCenter.value.longitude,
+      radius: 5000
+    })
+    heatmapData.value = res
+  } catch {
+    heatmapData.value = []
+  }
+}
+
+function initHeatmapCanvas() {
+  const sysInfo = uni.getSystemInfoSync()
+  canvasWidth.value = sysInfo.windowWidth
+  canvasHeight.value = sysInfo.windowHeight
+  const ctx = uni.createCanvasContext('heatmap-canvas')
+  heatmapCtx.value = ctx
+}
+
+function drawHeatmap() {
+  const ctx = heatmapCtx.value
+  if (!ctx) return
+
+  // 清除画布
+  ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+
+  if (heatmapData.value.length === 0) return
+
+  // 使用高德坐标转换（地图组件内置 GCJ-02）
+  // 获取地图上下文用于坐标转换
+  const mapCtx = uni.createMapContext('tourism-map')
+
+  // 简单方式：基于当前地图视野推算像素坐标
+  // mapScale: 每级 zoom 约 2倍视野，scale 范围约 4-18
+  const zoom = mapScale.value
+  // 每像素对应的经纬度（近似）
+  const metersPerPixel = 156543.03392 * Math.cos(mapCenter.value.latitude * Math.PI / 180) / Math.pow(2, zoom)
+  const lngPerPixel = metersPerPixel / 111320
+  const latPerPixel = metersPerPixel / 110540
+
+  // 计算地图区域（屏幕坐标转经纬度需要用 MapContext.pixelToCoord，真机支持）
+  // 这里用近似法：中心点 + scale 估算视野范围
+  const spanLng = canvasWidth.value * lngPerPixel
+  const spanLat = canvasHeight.value * latPerPixel
+
+  const minLng = mapCenter.value.longitude - spanLng / 2
+  const maxLat = mapCenter.value.latitude + spanLat / 2
+
+  for (const point of heatmapData.value) {
+    // 判断点是否在屏幕视野内
+    if (point.longitude < minLng || point.longitude > minLng + spanLng) continue
+    if (point.latitude < maxLat - spanLat || point.latitude > maxLat) continue
+
+    // 经纬度 → 屏幕像素
+    const px = (point.longitude - minLng) / spanLng * canvasWidth.value
+    const py = (maxLat - point.latitude) / spanLat * canvasHeight.value
+
+    // 半径随缩放级别动态调整（米→像素）
+    const radiusMeters = 500  // 每个热力点的影响半径 500m
+    const radiusPx = Math.max(20, radiusMeters / metersPerPixel)
+
+    // 绘制渐变圆（从中心往外透明度递减）
+    const gradient = ctx.createCircularGradient(px, py, radiusPx)
+    const alpha = Math.min(0.8, point.weight * 2 + 0.2)
+    gradient.addColorStop(0, `rgba(255, 80, 80, ${alpha})`)
+    gradient.addColorStop(0.4, `rgba(255, 180, 50, ${alpha * 0.7})`)
+    gradient.addColorStop(1, `rgba(255, 255, 100, 0)`)
+
+    ctx.beginPath()
+    ctx.arc(px, py, radiusPx, 0, 2 * Math.PI)
+    ctx.setFillStyle(gradient)
+    ctx.fill()
+  }
+
+  ctx.draw()
+}
+
 // 彩蛋：连续点击标题3次触发随机漫游
 const showEasterEgg = ref(false)
 let titleTapCount = 0
@@ -764,31 +884,15 @@ function formatDist(dist?: number) {
 
 async function loadNearby(lat: number, lng: number) {
   if (isRouteMode.value) return // 路线模式下不刷新附近景点
-  const cat = poiCategories.find(c => c.key === selectedCategory.value)
   try {
     const res = await poiApi.nearby({
       latitude: lat,
       longitude: lng,
       radius: 5000,
-      pageSize: 50
+      pageSize: 50,
+      category: selectedCategory.value === 'all' ? undefined : selectedCategory.value
     })
-    let list = res.list
-    // 如果选择了特定类别，过滤
-    if (cat && cat.key !== 'all') {
-      // 根据类别关键词过滤
-      const keywords: Record<string, string[]> = {
-        scenic: ['景点', '风景', '公园'],
-        museum: ['博物馆', '展览', '馆'],
-        park: ['公园', '园林', '绿化'],
-        food: ['美食', '餐厅', '餐饮', '小吃'],
-        shopping: ['购物', '商场', '超市', '商店']
-      }
-      const kws = keywords[cat.key] || []
-      if (kws.length > 0) {
-        list = list.filter(p => kws.some(k => (p.name + p.category + (p.description || '')).includes(k)))
-      }
-    }
-    poiStore.setNearbyList(list)
+    poiStore.setNearbyList(res.list)
   } catch {
     uni.showToast({ title: '加载附近景点失败', icon: 'none' })
   }
@@ -1220,9 +1324,37 @@ async function applySegmentMode(dayIdx: number, itemIdx: number, mode: TravelMod
 }
 
 async function saveRoute() {
-  if (!routeStore.currentRoute) return
+  if (!planResult.value) {
+    uni.showToast({ title: '请先生成路线', icon: 'none' })
+    return
+  }
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    setTimeout(() => uni.switchTab({ url: '/pages/home/index' }), 1500)
+    return
+  }
   try {
-    await routeApi.save(routeStore.currentRoute)
+    // 从 planResult（规划结果）构造完整保存对象
+    // pois 存每天的 poi id 列表，days/stayTime 来自规划结果
+    const allDays = planResult.value.schedule
+    // 后端 poiList 格式: { poiId, dayNum, stayTime }
+    // poiId 来自 AI 路线回填的 poiId（数据库主键），用于 /detail 回查
+    const poiList = allDays.flatMap(day =>
+      day.items.map(item => ({
+        poiId: item.poi.poiId,
+        dayNum: day.day,
+        stayTime: item.stayTime || 2
+      }))
+    )
+    const savePayload = {
+      name: planResult.value.title?.trim() || planResult.value.description?.trim() || '我的路线',
+      days: allDays.length,
+      pois: poiList,
+      tags: planResult.value.pois.flatMap((p: POI) => p.tags || []).filter(Boolean),
+      description: planResult.value.description,
+      coverImage: planResult.value.pois[0]?.images?.[0] || ''
+    }
+    await routeApi.save(savePayload as any)
     uni.showToast({ title: '路线已保存', icon: 'success' })
   } catch {
     uni.showToast({ title: '保存失败', icon: 'none' })
@@ -1244,18 +1376,47 @@ async function loadSavedRoute(route: any) {
   showRouteSelector.value = false
   routeStore.setCurrentRoute(route)
 
+  // /my 只返回列表摘要，/detail 才返回完整的 schedule+POI详情
+  let fullRoute: any
+  try {
+    fullRoute = await routeApi.detail(String(route.id))
+  } catch {
+    uni.showToast({ title: '加载路线失败', icon: 'none' })
+    return
+  }
+
   const allPois: POI[] = []
-  const planSchedule: PlanDay[] = (route.schedule || []).map((day: any) => {
-    const items: PlanDayItem[] = (day.pois || []).map((poi: POI) => ({ poi, stayTime: 2 }))
-    allPois.push(...(day.pois || []))
-    return { day: day.day, description: day.description, items, polylinePath: [] }
+  const planSchedule: PlanDay[] = (fullRoute.schedule || []).map((day: any) => {
+    const items: PlanDayItem[] = (day.pois || []).map((poi: POI) => ({
+      poi: {
+        id: poi.id,
+        poiId: poi.poiId,
+        name: poi.name,
+        latitude: poi.latitude,
+        longitude: poi.longitude,
+        category: poi.category || '',
+        tags: poi.tags || [],
+        stayTime: poi.stayTime || 2
+      } as POI,
+      stayTime: poi.stayTime || 2
+    }))
+    allPois.push(...(day.pois || []).map((p: any) => ({ ...p, id: p.id, poiId: p.poiId })))
+    return { day: day.day, description: day.description || '', items, polylinePath: [] }
   })
 
   const builtSchedule = await buildDayPolylines(planSchedule)
 
+  // 副标题用「天 + 景点数」：数据库里 description 可能存成错误的「X天 · 0个景点」，不能优先用它
+  const dayCount = Number(fullRoute.days) || planSchedule.length || 1
+  const poiTotal =
+    allPois.length ||
+    Number(fullRoute.poiCount) ||
+    Number(fullRoute.totalPoi) ||
+    0
+
   planResult.value = {
-    title: route.title,
-    description: `${route.days}天 · ${allPois.length}个景点`,
+    title: fullRoute.title || fullRoute.name || '我的路线',
+    description: `${dayCount}天 · ${poiTotal}个景点`,
     pois: allPois,
     schedule: builtSchedule
   }
@@ -1288,6 +1449,15 @@ onUnmounted(() => {
 .amap {
   width: 100%;
   height: 100%;
+}
+
+/* 热力图画布层 */
+.heatmap-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  pointer-events: none;
 }
 
 /* ===== 可拖动悬浮面板 ===== */

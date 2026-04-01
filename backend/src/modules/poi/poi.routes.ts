@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { requiredAuth, optionalAuth } from '../../shared/middleware/auth'
 import { prisma } from '../../config'
 import { userService } from '../user/user.service'
+import { poiRecommendService } from './poi.service'
+import { generateRoute } from './poi.route.service'
 
 const router = Router()
 
@@ -70,34 +72,67 @@ function transformPoi(poi: any) {
 // 公共接口（无需认证）
 // =============================================
 
-// 获取附近景点（基于坐标）- 公共接口
+// 获取附近景点（基于坐标 + 分类过滤）- 公共接口
 router.get('/nearby', async (req, res, next) => {
   try {
     const latitude = parseFloat(req.query.latitude as string)
     const longitude = parseFloat(req.query.longitude as string)
     const radius = parseFloat(req.query.radius as string) || 5000 // 默认5km
     const page = parseInt(req.query.page as string) || 1
-    const pageSize = parseInt(req.query.pageSize as string) || 20
+    const pageSize = parseInt(req.query.pageSize as string) || 50
+    const category = req.query.category as string
 
     if (isNaN(latitude) || isNaN(longitude)) {
       return res.status(400).json({ code: 400, message: '无效的经纬度', data: null })
     }
 
-    // 简单矩形范围过滤（实际生产可用空间查询）
+    // 矩形范围过滤
     const latDelta = radius / 111000 // 1度约111km
     const lngDelta = radius / (111000 * Math.cos(latitude * Math.PI / 180))
 
+    // 构建查询条件
+    const where: any = {
+      status: 1,
+      latitude: { gte: latitude - latDelta, lte: latitude + latDelta },
+      longitude: { gte: longitude - lngDelta, lte: longitude + lngDelta }
+    }
+
+    // 分类过滤（同时支持 poiType 中文名 和 typeCode 高德类型码过滤，OR 逻辑）
+    // 数据库实际存储类型：风景名胜、博物馆、公园、特色街区、购物场所、宗教场所、地标建筑、旅游景点、主题乐园
+    // 高德 typeCode 参考：110000=风景名胜、141200=博物馆、140000=公园、060000=购物场所、050000=餐饮服务
+    const categoryConditions: any[] = []
+    if (category && category !== 'all') {
+      const categoryMap: Record<string, { poiTypes?: string[]; typeCodes?: string[] }> = {
+        scenic: { poiTypes: ['风景名胜', '地标建筑', '旅游景点'], typeCodes: ['110000'] },
+        museum: { poiTypes: ['博物馆'], typeCodes: ['141200', '141300'] },
+        park: { poiTypes: ['公园'], typeCodes: ['140000'] },
+        food: { poiTypes: ['特色街区', '宗教场所'], typeCodes: ['050000'] },
+        shopping: { poiTypes: ['购物场所'], typeCodes: ['060000'] },
+        landmark: { poiTypes: ['地标建筑'], typeCodes: ['110000'] },
+        entertainment: { poiTypes: ['主题乐园'], typeCodes: ['110000'] },
+      }
+      const cfg = categoryMap[category]
+      if (cfg) {
+        if (cfg.poiTypes) {
+          categoryConditions.push({ poiType: { in: cfg.poiTypes } })
+        }
+        if (cfg.typeCodes) {
+          categoryConditions.push({ typeCode: { in: cfg.typeCodes } })
+        }
+      }
+    }
+
     const pois = await prisma.poiInfo.findMany({
       where: {
-        status: 1,
-        latitude: { gte: latitude - latDelta, lte: latitude + latDelta },
-        longitude: { gte: longitude - lngDelta, lte: longitude + lngDelta }
+        ...where,
+        ...(categoryConditions.length > 0 ? { OR: categoryConditions } : {})
       },
       include: {
         poiTags: { include: { tag: true } },
         stats: true,
         tickets: { where: { status: 1 }, take: 1 }
       },
+      skip: (page - 1) * pageSize,
       take: pageSize
     })
 
@@ -160,62 +195,36 @@ router.get('/heatmap', async (req, res, next) => {
   }
 })
 
-// 获取推荐景点列表（可选认证，登录时返回个性化推荐）
+// 获取推荐景点列表（基于向量相似度的智能推荐）
 router.get('/recommend', optionalAuth, async (req, res, next) => {
   try {
     const page = parseInt(req.query.page as string) || 1
     const pageSize = parseInt(req.query.pageSize as string) || 20
+    const latitude = req.query.latitude ? parseFloat(req.query.latitude as string) : undefined
+    const longitude = req.query.longitude ? parseFloat(req.query.longitude as string) : undefined
     const userId = (req as any).userId
 
-    // 如果用户已登录，获取用户偏好
-    let preferenceTags: string[] = []
-    if (userId) {
-      const profile = await userService.getProfile(userId)
-      if (profile?.preference?.preferenceTags) {
-        const tags = profile.preference.preferenceTags
-        preferenceTags = [...(tags.intensity || []), ...(tags.interests || []), ...(tags.theme || []), ...(tags.cuisine || []), ...(tags.mood || [])]
-      }
-    }
-
-    // 构建查询条件
-    const where: any = { status: 1 }
-
-    // 如果有偏好标签，优先查询匹配的POI
-    if (preferenceTags.length > 0) {
-      where.poiTags = {
-        some: {
-          tag: { tagCode: { in: preferenceTags } },
-          weight: { gte: 0.3 }
-        }
-      }
-    }
-
-    const pois = await prisma.poiInfo.findMany({
-      where,
-      include: {
-        poiTags: { include: { tag: true } },
-        stats: true,
-        tickets: { where: { status: 1 }, take: 1 }
-      },
-      orderBy: preferenceTags.length > 0
-        ? [{ stats: { heatScore: 'desc' } }, { createdAt: 'desc' }]
-        : [{ createdAt: 'desc' }],
-      skip: (page - 1) * pageSize,
-      take: pageSize
+    // 使用新的向量推荐服务
+    const result = await poiRecommendService.getRecommend({
+      userId,
+      latitude,
+      longitude,
+      page,
+      pageSize,
+      useEmbedding: true
     })
-
-    const total = await prisma.poiInfo.count({ where })
 
     res.json({
       code: 0,
       message: 'success',
       data: {
-        list: pois.map(transformPoi),
-        total,
-        personalized: !!userId && preferenceTags.length > 0
+        list: result.list,
+        total: result.total,
+        personalized: result.personalized
       }
     })
   } catch (error) {
+    console.error('[POI Recommend] 推荐接口异常:', error)
     next(error)
   }
 })
@@ -261,7 +270,7 @@ router.get('/:id', async (req, res, next) => {
 router.post('/ai-plan', optionalAuth, async (req, res, next) => {
   try {
     const userId = (req as any).userId
-    const { prompt, days } = req.body
+    const { prompt, days, startLatitude, startLongitude } = req.body
 
     if (!prompt) {
       return res.status(400).json({ code: 400, message: '请输入旅行需求', data: null })
@@ -278,29 +287,33 @@ router.post('/ai-plan', optionalAuth, async (req, res, next) => {
 
     const consumeResult = await userService.consumeAiPlan(userId)
     if (!consumeResult.success) {
+      const message = await userService.getAiPlanExhaustedMessage(userId)
       return res.status(403).json({
         code: 403,
-        message: 'AI规划次数已用完，请绑定手机号升级账号获取更多次数',
+        message,
         data: null
       })
     }
 
-    // TODO: 调用AI服务生成路线
-    // 模拟返回
-    const mockRoute = {
-      id: `ai_${Date.now()}`,
-      name: `AI推荐路线 - ${days || 1}日游`,
+    // 调用 AI 路线生成服务（Retrieve-then-Generate）
+    const route = await generateRoute({
+      prompt,
       days: days || 1,
-      pois: [],
-      remainingCount: consumeResult.remaining
-    }
+      startLatitude,
+      startLongitude,
+      userId
+    })
+
+    // 附加剩余次数
+    route.remainingCount = consumeResult.remaining
 
     res.json({
       code: 0,
       message: 'success',
-      data: mockRoute
+      data: route
     })
   } catch (error) {
+    console.error('[AI Plan] 路线生成异常:', error)
     next(error)
   }
 })

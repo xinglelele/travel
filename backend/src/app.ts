@@ -8,6 +8,7 @@ import poiRoutes from './modules/poi/poi.routes'
 import routeRoutes from './modules/route/route.routes'
 import messageRoutes from './modules/message/message.routes'
 import contentRoutes from './modules/content/content.routes'
+import searchRoutes from './modules/search/search.routes'
 
 export function createApp(): Express {
   const app = express()
@@ -28,6 +29,7 @@ export function createApp(): Express {
   app.use('/api/route', routeRoutes)
   app.use('/api/message', messageRoutes)
   app.use('/api/content', contentRoutes)
+  app.use('/api/search', searchRoutes)
 
   // 错误处理
   app.use(errorHandler)

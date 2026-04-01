@@ -602,7 +602,23 @@ export class UserService {
   }
 
   /**
+   * AI 规划次数用尽时的提示（已绑定手机号的用户不应再提示「去绑定手机」）
+   */
+  async getAiPlanExhaustedMessage(userId: number): Promise<string> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { tel: true },
+    })
+    const hasTel = !!(user?.tel && String(user.tel).trim())
+    return hasTel
+      ? 'AI规划次数已用完，请稍后再试或联系管理员增加次数'
+      : 'AI规划次数已用完，绑定手机号可提升账号次数'
+  }
+
+  /**
    * 消耗AI规划次数
+   * - 已登录用户（registerType > 0）：无限次，直接放行
+   * - 匿名用户（registerType = 0）：扣减 aiPlanCount，用尽后返回失败
    */
   async consumeAiPlan(userId: number): Promise<{ success: boolean; remaining: number }> {
     const user = await prisma.user.findUnique({
@@ -613,6 +629,12 @@ export class UserService {
       return { success: false, remaining: 0 }
     }
 
+    // 已登录用户（绑定手机 / 微信）无限规划次数
+    if (user.registerType !== RegisterType.Anonymous) {
+      return { success: true, remaining: -1 }
+    }
+
+    // 匿名用户：扣减次数
     if (user.aiPlanCount <= 0) {
       return { success: false, remaining: 0 }
     }
