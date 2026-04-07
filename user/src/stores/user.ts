@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { toHttpsImage } from '../api/request'
 
 export interface UserPreference {
     fromRegion?: number
@@ -75,7 +76,11 @@ export const useUserStore = defineStore('user', () => {
     }
 
     function setUserInfo(info: UserInfo) {
-        userInfo.value = info
+        userInfo.value = {
+            ...info,
+            // 统一处理头像 URL，避免微信开发者工具强制升级 localhost 为 HTTPS
+            avatar: toHttpsImage(info.avatar || '') || undefined
+        }
         if (info.preference) {
             preference.value = info.preference
             hasSetPreference.value = true

@@ -76,6 +76,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '../../stores/user'
 import { switchLanguage, SUPPORTED_LANGUAGES } from '../../utils/locale'
+import { requestAllNotifications } from '../../utils/notification'
 
 const { t, locale } = useI18n()
 const userStore = useUserStore()
@@ -98,8 +99,19 @@ function selectLanguage(key: string) {
   switchLanguage(key)
 }
 
-function onNotificationChange(e: { detail: { value: boolean } }) {
+async function onNotificationChange(e: { detail: { value: boolean } }) {
   notificationOn.value = e.detail.value
+  if (notificationOn.value) {
+    // 用户开启通知，请求订阅权限
+    const granted = await requestAllNotifications()
+    if (!granted) {
+      uni.showToast({
+        title: '请在设置中开启通知权限',
+        icon: 'none'
+      })
+      notificationOn.value = false
+    }
+  }
 }
 
 function clearCache() {

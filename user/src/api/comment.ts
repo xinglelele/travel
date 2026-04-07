@@ -34,6 +34,10 @@ export interface CommentStats {
 }
 
 export const commentApi = {
+    /** 检查是否有权评论（点击评论按钮时调用） */
+    can: (poiId: string) =>
+        get<{ allowed: boolean }>('/api/comment/can', { poiId }),
+
     /** 发表评论 */
     create: (params: CreateCommentParams) =>
         post<Comment>('/api/comment/create', params as Record<string, unknown>),

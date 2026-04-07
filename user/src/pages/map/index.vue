@@ -295,6 +295,7 @@
             <text class="result-subtitle">{{ planResult.description }}</text>
           </view>
           <view class="result-actions">
+            <text class="result-action-btn" @tap="onStartNav">{{ t('route.startNavigation') }}</text>
             <text class="result-action-btn" @tap="saveRoute">保存</text>
             <view class="result-collapse-btn" @tap="resultCollapsed = true">
               <text class="result-collapse-icon">▼</text>
@@ -428,20 +429,23 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePoiStore } from '../../stores/poi'
 import { useUserStore } from '../../stores/user'
 import { useRouteStore } from '../../stores/route'
-import { DEFAULT_CENTER, DEFAULT_SCALE, isInShanghai, SHANGHAI_RECOMMENDED_POIS, DEV_MOCK_LOCATION } from '../../utils/amap-config'
+import { DEFAULT_CENTER, DEFAULT_SCALE, isInShanghai, SHANGHAI_RECOMMENDED_POIS, DEV_MOCK_LOCATION, toHttpsImage } from '../../utils/amap-config'
 import { planMultiSegmentRoute, amapTransitPlans, TRAVEL_MODES } from '../../utils/amap-api'
 import type { TravelMode, TransitPlan } from '../../utils/amap-api'
 import { routeApi } from '../../api/route'
 import { poiApi } from '../../api/poi'
 import type { POI } from '../../stores/poi'
 import AppIcon from '../../components/AppIcon.vue'
+import { systemInfo, initSystemInfo } from '../../utils/system-info'
 
 const poiStore = usePoiStore()
 const routeStore = useRouteStore()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 // 地图状态
 const mapCenter = ref({ latitude: DEFAULT_CENTER.latitude, longitude: DEFAULT_CENTER.longitude })
@@ -469,7 +473,10 @@ let panelStartX = 0
 let panelStartY = 0
 let isDragging = false
 let dragMoved = false
-const { windowWidth: SCREEN_W, windowHeight: SCREEN_H } = uni.getSystemInfoSync()
+// 初始化系统信息并获取屏幕尺寸
+initSystemInfo()
+const SCREEN_W = systemInfo.windowWidth
+const SCREEN_H = systemInfo.windowHeight
 
 function onPanelTouchStart(e: any) {
   const touch = e.touches[0]
@@ -595,6 +602,37 @@ const resultCollapsed = ref(false)
 const showCollapsedTooltip = ref(false)
 // 路线模式：激活时禁止高德附近搜索和 POI 缓存
 const isRouteMode = ref(false)
+
+// ===== 导航状态 =====
+const isNavigating = ref(false)
+const currentNavDayIdx = ref(0)
+const currentNavItemIdx = ref(0)
+const userLocation = ref({ latitude: 31.2304, longitude: 121.4737 })
+const autoFollow = ref(false)
+let locationChangeHandler: ((res: any) => void) | null = null
+
+function startLocationTracking() {
+  if (locationChangeHandler) return
+  uni.startLocationUpdate({ type: 'gcj02' }).catch(() => {})
+  locationChangeHandler = (res: any) => {
+    userLocation.value = { latitude: res.latitude, longitude: res.longitude }
+    if (autoFollow.value && Number.isFinite(res.latitude) && Number.isFinite(res.longitude)) {
+      mapCenter.value = { latitude: res.latitude, longitude: res.longitude }
+      const mapCtx = uni.createMapContext('tourism-map')
+      mapCtx.moveToLocation({ latitude: res.latitude, longitude: res.longitude, fail: () => {} })
+    }
+  }
+  uni.onLocationChange(locationChangeHandler)
+}
+
+function stopLocationTracking() {
+  if (locationChangeHandler) {
+    uni.offLocationChange(locationChangeHandler)
+    locationChangeHandler = null
+  }
+  autoFollow.value = false
+}
+
 let tooltipTimer: any = null
 
 function hideTooltipDelay() {
@@ -659,9 +697,8 @@ async function loadHeatmapData() {
 }
 
 function initHeatmapCanvas() {
-  const sysInfo = uni.getSystemInfoSync()
-  canvasWidth.value = sysInfo.windowWidth
-  canvasHeight.value = sysInfo.windowHeight
+  canvasWidth.value = systemInfo.windowWidth
+  canvasHeight.value = systemInfo.windowHeight
   const ctx = uni.createCanvasContext('heatmap-canvas')
   heatmapCtx.value = ctx
 }
@@ -1183,21 +1220,53 @@ async function buildDayPolylines(schedule: PlanDay[]): Promise<PlanDay[]> {
   return Promise.all(schedule.map(async (day) => {
     const pois = day.items.map(i => i.poi)
     if (pois.length < 2) return { ...day, polylinePath: pois.map(p => ({ latitude: p.latitude, longitude: p.longitude })) }
-    // 按段规划，每段用该段的 segmentMode，结果直接拼接（planMultiSegmentRoute 已处理去重）
-    const paths: Array<{ latitude: number; longitude: number }> = []
-    for (let i = 0; i < pois.length - 1; i++) {
+    // 每天内部各段并行请求（高德 QPS 限制由 enqueueRoute 单例队列兜底）
+    const segmentPromises = pois.slice(0, -1).map((poi, i) => {
       const mode = day.items[i].segmentMode ?? travelMode.value
-      try {
-        const seg = await planMultiSegmentRoute([pois[i], pois[i + 1]], mode, day.items[i].transitPlanIndex ?? 0)
-        // 第一段保留全部，后续段去掉第一个点（与上段末尾重复）
-        paths.push(...(i === 0 ? seg : seg.slice(1)))
-      } catch {
-        if (i === 0) paths.push({ latitude: pois[i].latitude, longitude: pois[i].longitude })
-        paths.push({ latitude: pois[i + 1].latitude, longitude: pois[i + 1].longitude })
-      }
-    }
+      return planMultiSegmentRoute([poi, pois[i + 1]], mode, day.items[i].transitPlanIndex ?? 0)
+    })
+    const results = await Promise.all(segmentPromises)
+    // 拼接各段：第一段全保留，后续段去重第一个点
+    const paths = results.flatMap((seg, i) => (i === 0 ? seg : seg.slice(1)))
     return { ...day, polylinePath: paths }
   }))
+}
+
+function onStartNav() {
+  if (!planResult.value) return
+  // 将 map 上的规划结果同步到 routeStore.currentRoute，供 navigate.vue 使用
+  const currentRoute = routeStore.currentRoute
+  if (currentRoute) {
+    // AI 生成的路线 id 为 ai_，导航页会直接从 store 读取
+    const allPois = planResult.value.pois
+    const schedule = planResult.value.schedule.map((day, dayIdx) => ({
+      day: day.day,
+      pois: day.items.map(item => ({
+        ...item.poi,
+        id: item.poi.id || item.poi.poiId,
+        poiId: item.poi.poiId || item.poi.id,
+        name: item.poi.name,
+        latitude: item.poi.latitude,
+        longitude: item.poi.longitude,
+        images: item.poi.images || ['/static/logo.png'],
+        address: item.poi.address || '',
+        rating: item.poi.rating || 4.5,
+        category: item.poi.category || '',
+        tags: item.poi.tags || [],
+      })),
+      description: day.description
+    }))
+    routeStore.setCurrentRoute({
+      ...currentRoute,
+      title: planResult.value.title,
+      schedule,
+      days: schedule.length,
+      totalPoi: allPois.length,
+      poiCount: allPois.length
+    })
+  }
+  const routeId = currentRoute ? String(currentRoute.id) : 'ai_map_route'
+  uni.navigateTo({ url: `/pages/route/navigate?id=${routeId}&tmp=${currentRoute?.id?.toString().startsWith('ai_') ? '1' : '0'}` })
 }
 
 function clearPlanResult() {
@@ -1387,20 +1456,43 @@ async function loadSavedRoute(route: any) {
 
   const allPois: POI[] = []
   const planSchedule: PlanDay[] = (fullRoute.schedule || []).map((day: any) => {
-    const items: PlanDayItem[] = (day.pois || []).map((poi: POI) => ({
-      poi: {
-        id: poi.id,
-        poiId: poi.poiId,
-        name: poi.name,
-        latitude: poi.latitude,
-        longitude: poi.longitude,
+    const items: PlanDayItem[] = (day.pois || []).map((poi: any) => {
+      const normalized = {
+        id: poi.id || '',
+        poiId: poi.poiId || poi.id || 0,
+        name: poi.name || '',
         category: poi.category || '',
-        tags: poi.tags || [],
-        stayTime: poi.stayTime || 2
-      } as POI,
-      stayTime: poi.stayTime || 2
-    }))
-    allPois.push(...(day.pois || []).map((p: any) => ({ ...p, id: p.id, poiId: p.poiId })))
+        description: poi.description || '',
+        images: ((poi.images || []).length > 0 ? poi.images : ['/static/logo.png']).map((img: string) => toHttpsImage(img)),
+        latitude: Number(poi.latitude) || 0,
+        longitude: Number(poi.longitude) || 0,
+        address: poi.address || '',
+        openTime: '',
+        ticketPrice: 0,
+        phone: '',
+        rating: Number(poi.rating) || 4.5,
+        commentCount: 0,
+        tags: poi.tags || []
+      } as POI
+      return { poi: normalized, stayTime: poi.stayTime || 2 }
+    })
+    allPois.push(...(day.pois || []).map((p: any) => ({
+      id: p.id || '',
+      poiId: p.poiId || p.id || 0,
+      name: p.name || '',
+      category: p.category || '',
+      description: '',
+      images: ((p.images || []).length > 0 ? p.images : ['/static/logo.png']).map((img: string) => toHttpsImage(img)),
+      latitude: Number(p.latitude) || 0,
+      longitude: Number(p.longitude) || 0,
+      address: p.address || '',
+      openTime: '',
+      ticketPrice: 0,
+      phone: '',
+      rating: Number(p.rating) || 4.5,
+      commentCount: 0,
+      tags: p.tags || []
+    } as POI)))
     return { day: day.day, description: day.description || '', items, polylinePath: [] }
   })
 

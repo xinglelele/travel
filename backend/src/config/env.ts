@@ -5,7 +5,9 @@ dotenv.config()
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
-  apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000',
+  /** 本地开发用 false（强制 http），生产环境用 true（强制 https） */
+  useHttps: process.env.USE_HTTPS === 'true',
+  apiBaseUrl: process.env.API_BASE_URL || (process.env.USE_HTTPS === 'true' ? 'https://localhost:3000' : 'http://localhost:3000'),
 
   db: {
     host: process.env.DB_HOST || 'localhost',

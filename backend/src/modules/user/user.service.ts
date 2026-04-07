@@ -1,6 +1,7 @@
 import { prisma } from '../../config'
 import { generateToken } from '../../shared/middleware/auth'
 import { smsService } from '../../shared/services/sms.service'
+import { normalizeUrl } from '../../shared/utils/url'
 import bcrypt from 'bcryptjs'
 
 /**
@@ -527,7 +528,7 @@ export class UserService {
       id: user.id,
       tel: user.tel,
       nickname: user.nickname,
-      avatar: user.avatar,
+      avatar: normalizeUrl(user.avatar || ''),
       gender: user.gender,
       locale: user.locale,
       registerType: user.registerType,
@@ -570,7 +571,7 @@ export class UserService {
       id: user.id,
       tel: user.tel,
       nickname: user.nickname,
-      avatar: user.avatar,
+      avatar: normalizeUrl(user.avatar || ''),
       gender: user.gender,
       locale: user.locale,
       needProfileSetup,

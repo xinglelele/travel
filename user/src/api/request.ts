@@ -3,7 +3,63 @@ import { mockRequest } from '../../mock/index'
 /** true = mock 模式，false = 请求真实接口 */
 const USE_MOCK = false
 
-const BASE_URL = 'http://localhost:3000'
+/** 本地开发用 http，生产环境用 https（上传接口和图片 URL 统一走此协议） */
+const DEV_HTTP = true
+
+/** 与 upload 等模块共用，勿在其它文件重复写死 */
+export const BASE_URL = DEV_HTTP ? 'http://localhost:3000' : 'https://your-domain.com'
+
+/** 统一处理图片 URL，开发环境强制 http，生产环境强制 https */
+export function toHttpsImage(url: string): string {
+    if (!url) return ''
+    if (
+        url.startsWith('wxfile://') ||
+        url.startsWith('file://') ||
+        url.startsWith('tmp/') ||
+        url.startsWith('/tmp/') ||
+        /^[a-z]:\\/i.test(url)
+    ) {
+        return '/static/logo.png'
+    }
+    if (DEV_HTTP) {
+        if (url.startsWith('https://')) {
+            return 'http://' + url.slice(8)
+        }
+        return url
+    } else {
+        if (url.startsWith('http://')) {
+            return url.replace(/^http:\/\//, 'https://')
+        }
+        return url
+    }
+}
+
+/** 递归处理对象中的图片 URL（用于 API 响应数据） */
+function normalizeImages<T>(obj: T): T {
+    if (Array.isArray(obj)) {
+        return obj.map(item => normalizeImages(item)) as T
+    }
+    if (obj && typeof obj === 'object') {
+        const result: any = {}
+        for (const key in obj) {
+            const val = (obj as any)[key]
+            // 常见图片字段
+            if (key === 'images' || key === 'photos' || key === 'image' || key === 'photo' || key === 'avatar' || key === 'userAvatar' || key === 'coverImage' || key === 'cover') {
+                if (Array.isArray(val)) {
+                    result[key] = val.map((v: any) => typeof v === 'string' ? toHttpsImage(v) : normalizeImages(v))
+                } else if (typeof val === 'string') {
+                    result[key] = toHttpsImage(val)
+                } else {
+                    result[key] = normalizeImages(val)
+                }
+            } else {
+                result[key] = normalizeImages(val)
+            }
+        }
+        return result
+    }
+    return obj
+}
 
 interface RequestOptions {
     url: string
@@ -64,9 +120,13 @@ export function request<T = unknown>(options: RequestOptions): Promise<T> {
                     raw !== null && typeof raw === 'object' && 'code' in raw
                         ? (raw as ApiResponse<T>)
                         : null
+                const htmlErr = typeof raw === 'string' && raw.includes('<!DOCTYPE')
+                    ? (raw.match(/<pre>([^<]+)<\/pre>/i)?.[1]?.trim() || raw.match(/Cannot GET\s+([^\s<]+)/i)?.[0] || '')
+                    : ''
                 const errMsg =
                     body?.message ||
-                    (typeof raw === 'string' && raw.trim() ? raw : '')
+                    htmlErr ||
+                    (typeof raw === 'string' && raw.trim() && !htmlErr ? raw.slice(0, 80) : '')
 
                 if (res.statusCode === 401) {
                     // 可选认证接口的 401 不触发登出、不弹 toast（由调用方处理）
@@ -84,7 +144,7 @@ export function request<T = unknown>(options: RequestOptions): Promise<T> {
 
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     if (body && body.code === 0) {
-                        resolve(body.data as T)
+                        resolve(normalizeImages(body.data) as T)
                     } else if (body) {
                         uni.showToast({ title: body.message || '请求失败', icon: 'none' })
                         reject(new Error(body.message || '请求失败'))
@@ -98,7 +158,7 @@ export function request<T = unknown>(options: RequestOptions): Promise<T> {
                 // 4xx/5xx：解析后端 JSON 中的 message（如 phone-login 返回 400）
                 if (res.statusCode >= 400) {
                     const msg = errMsg || `请求失败 (${res.statusCode})`
-                    uni.showToast({ title: msg, icon: 'none' })
+                    uni.showToast({ title: msg, icon: 'none', duration: 2500 })
                     reject(new Error(msg))
                     return
                 }
@@ -114,8 +174,16 @@ export function request<T = unknown>(options: RequestOptions): Promise<T> {
     })
 }
 
-export const get = <T = unknown>(url: string, data?: Record<string, unknown>, optionalAuth = false) =>
-    request<T>({ url, method: 'GET', data, optionalAuth })
+export const get = <T = unknown>(url: string, data?: Record<string, unknown>, optionalAuth = false) => {
+    // 过滤 undefined / null，避免被序列化为字符串 "undefined" 传入后端
+    const clean: Record<string, unknown> = {}
+    if (data) {
+        for (const [k, v] of Object.entries(data)) {
+            if (v !== undefined && v !== null) clean[k] = v
+        }
+    }
+    return request<T>({ url, method: 'GET', data: clean, optionalAuth })
+}
 
 export const post = <T = unknown>(url: string, data?: Record<string, unknown>, optionalAuth = false) =>
     request<T>({ url, method: 'POST', data, optionalAuth })

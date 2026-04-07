@@ -4,6 +4,7 @@ import { prisma } from '../../config'
 import { userService } from '../user/user.service'
 import { poiRecommendService } from './poi.service'
 import { generateRoute } from './poi.route.service'
+import { normalizeUrl } from '../../shared/utils/url'
 
 const router = Router()
 
@@ -13,7 +14,9 @@ function transformPoi(poi: any) {
   if (poi.photos) {
     try {
       const photos = typeof poi.photos === 'string' ? JSON.parse(poi.photos) : poi.photos
-      images = Array.isArray(photos) && photos.length > 0 ? photos : ['/static/logo.png']
+      images = Array.isArray(photos) && photos.length > 0
+        ? photos.map((p: string) => normalizeUrl(p))
+        : ['/static/logo.png']
     } catch {
       images = ['/static/logo.png']
     }
@@ -322,26 +325,8 @@ router.post('/ai-plan', optionalAuth, async (req, res, next) => {
 // 必须登录接口（需要认证）
 // =============================================
 
-// 获取用户收藏/历史等（示例）
-router.get('/my/favorites', requiredAuth, async (req, res, next) => {
-  try {
-    const userId = (req as any).userId
-    const page = parseInt(req.query.page as string) || 1
-    const pageSize = parseInt(req.query.pageSize as string) || 20
-
-    // TODO: 实现收藏功能
-    res.json({
-      code: 0,
-      message: 'success',
-      data: {
-        list: [],
-        total: 0
-      }
-    })
-  } catch (error) {
-    next(error)
-  }
-})
+// 获取用户收藏列表（重定向到 favorite 模块）
+// 注意：旧版 /api/poi/my/favorites 已废弃，请使用 /api/favorite/list
 
 // Haversine公式计算距离（米）
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

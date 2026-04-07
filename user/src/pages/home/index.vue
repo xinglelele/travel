@@ -102,8 +102,8 @@ const userStore = useUserStore()
 const showPrefModal = ref(false)
 
 const banners = ref([
-  { image: '/static/logo.png', title: '探索自然之美', link: '' },
-  { image: '/static/logo.png', title: '感受历史文化', link: '' }
+  { image: '/static/test1.png', title: '探索自然之美', link: '' },
+  { image: '/static/test.png', title: '感受历史文化', link: '' }
 ])
 const page = ref(1)
 const noMore = ref(false)
@@ -149,6 +149,8 @@ async function loadMore() {
 }
 
 async function loadMessages() {
+  // 未登录时不请求消息列表，避免 401 错误
+  if (!userStore.isLoggedIn) return
   try {
     const res = await messageApi.list({ pageSize: 20 })
     messageStore.setMessages(res.list)

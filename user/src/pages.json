@@ -7,7 +7,7 @@
 	},
 	"plugins": {
 		"WechatSI": {
-			"version": "0.3.3",
+			"version": "0.3.6",
 			"provider": "wx069ba97219f66d99"
 		}
 	},
@@ -73,6 +73,12 @@
 				"navigationBarTitleText": "路线详情",
 				"navigationBarBackgroundColor": "#FFFFFF",
 				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/route/navigate",
+			"style": {
+				"navigationStyle": "custom"
 			}
 		},
 		{
@@ -157,6 +163,22 @@
 			"style": {
 				"navigationStyle": "custom",
 				"navigationBarTitleText": "完善资料"
+			}
+		},
+		{
+			"path": "pages/favorite/list",
+			"style": {
+				"navigationBarTitleText": "我的收藏",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/profile/stats",
+			"style": {
+				"navigationBarTitleText": "数据统计",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
 			}
 		}
 	],

@@ -40,6 +40,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMessageStore } from '../../stores/message'
+import { useUserStore } from '../../stores/user'
 import { messageApi } from '../../api/message'
 import type { Message } from '../../stores/message'
 import AppIcon from '../../components/AppIcon.vue'
@@ -47,6 +48,7 @@ import type { IconName } from '../../utils/icons'
 
 const { t } = useI18n()
 const messageStore = useMessageStore()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const page = ref(1)
@@ -74,6 +76,11 @@ function formatTime(dateStr: string) {
 
 async function loadData(reset = false) {
   if (loading.value) return
+  // 未登录时不请求消息列表
+  if (!userStore.isLoggedIn) {
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     const res = await messageApi.list({ page: page.value, pageSize: 20 })

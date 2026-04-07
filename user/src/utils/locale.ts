@@ -18,8 +18,13 @@ export function switchLanguage(langKey: string) {
         ; (i18n.global.locale as any).value = langKey
     uni.setStorageSync('locale', langKey)
 
+    const toastTitle: Record<string, string> = {
+        'zh-CN': '语言已切换',
+        'en': 'Language Changed',
+    }
+
     uni.showModal({
-        title: '语言已切换',
+        title: toastTitle[langKey] || '语言已切换',
         content: '重新进入首页后完全生效',
         showCancel: false,
         confirmText: '好的',

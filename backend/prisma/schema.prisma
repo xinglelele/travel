@@ -30,7 +30,7 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  preference UserPreference?
+  preference  UserPreference?
   routes       Route[]
   checks       CheckInfo[]
   comments     CommentInfo[]
@@ -39,6 +39,12 @@ model User {
   reports      ReportRecord[]
   routeShares  RouteShare[]
   commentAuditReports CommentAuditQueue[]
+  favorites    UserFavorite[]
+  userContents UserContent[]
+  userContentLikes         UserContentLike[]
+  officialContentLikes     OfficialContentLike[]
+  userContentFavorites     UserContentFavorite[]
+  officialContentFavorites OfficialContentFavorite[]
 
   @@map("user")
 }
@@ -145,6 +151,7 @@ model CommentInfo {
   poi  PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
   route Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
   auditQueue CommentAuditQueue?
+  userContent UserContent?
 
   @@index([userId])
   @@index([poiId])
@@ -203,6 +210,80 @@ model UserBehavior {
   @@map("user_behavior")
 }
 
+model UserFavorite {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  poiId     Int       @map("poi_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poi  PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, poiId])
+  @@index([userId])
+  @@map("user_favorite")
+}
+
+/** 用户内容点赞（发现页评论推荐） */
+model UserContentLike {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  userContentId Int      @map("user_content_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userContent UserContent @relation(fields: [userContentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, userContentId])
+  @@index([userContentId])
+  @@map("user_content_like")
+}
+
+/** 官方内容点赞 */
+model OfficialContentLike {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  officialContentId Int      @map("official_content_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  officialContent OfficialContent @relation(fields: [officialContentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, officialContentId])
+  @@index([officialContentId])
+  @@map("official_content_like")
+}
+
+/** 用户内容收藏 */
+model UserContentFavorite {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  userContentId Int      @map("user_content_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userContent UserContent @relation(fields: [userContentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, userContentId])
+  @@index([userId])
+  @@map("user_content_favorite")
+}
+
+/** 官方内容收藏 */
+model OfficialContentFavorite {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  officialContentId Int      @map("official_content_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  officialContent OfficialContent @relation(fields: [officialContentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, officialContentId])
+  @@index([userId])
+  @@map("official_content_favorite")
+}
+
 // ============================================
 // 公共模型
 // ============================================
@@ -237,7 +318,7 @@ model PoiInfo {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   poiTags      PoiTagRel[]
-  stats        PoiStats?
+  stats        PoiStats[]
   checks       CheckInfo[]
   comments     CommentInfo[]
   openingTimes OpeningTime[]
@@ -247,6 +328,8 @@ model PoiInfo {
   auditQueue   PoiAuditQueue?
   createdByGov Government? @relation("PoiCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   auditedByGov Government?  @relation("PoiAuditor", fields: [auditedBy], references: [id], onDelete: SetNull)
+  favorites    UserFavorite[]
+  userContents UserContent[]
 
   @@index([poiUuid])
   @@index([status])
@@ -255,14 +338,14 @@ model PoiInfo {
 }
 
 model PoiStats {
-  id           Int       @id @default(autoincrement())
-  poiId        Int       @unique @map("poi_id")
-  date         DateTime  @db.Date
-  checkCount   Int       @default(0) @map("check_count")
-  heatScore    Decimal   @db.Decimal(5, 2) @default(0) @map("heat_score")
-  avgStayTime  Decimal   @db.Decimal(5, 2) @default(0) @map("avg_stay_time")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id         Int       @id @default(autoincrement())
+  poiId      Int       @map("poi_id")
+  date       DateTime  @db.Date @map("date")
+  checkCount Int       @default(0) @map("check_count")
+  heatScore  Decimal   @db.Decimal(5, 2) @default(0) @map("heat_score")
+  avgStayTime Decimal  @db.Decimal(5, 2) @default(0) @map("avg_stay_time")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   poi PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
 
@@ -580,8 +663,41 @@ model OfficialContent {
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   gov Government @relation(fields: [govId], references: [id])
+  likes     OfficialContentLike[]
+  favorites OfficialContentFavorite[]
 
   @@index([govId])
   @@index([status])
   @@map("official_content")
+}
+
+// 用户生成内容（由评论自动生成，用于发现页展示）
+model UserContent {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @map("user_id")
+  poiId          Int       @map("poi_id")
+  commentId      Int       @unique @map("comment_id")
+  rating         Decimal   @db.Decimal(2, 1) @map("rating")
+  content        String    @db.Text @map("content")
+  images         Json?     @map("images")
+  category       String?   @map("category")  // 景点分类（来自 poiType），用于发现页筛选
+  tags           Json?     @map("tags")      // 景点标签
+  poiName        Json?     @map("poi_name")   // 景点名称
+  poiCoverImage  String?   @map("poi_cover_image")  // 景点首图作为封面
+  viewCount      Int       @default(0) @map("view_count")
+  likeCount      Int       @default(0) @map("like_count")
+  status         Int       @default(1)        // 0=待审核，1=已发布
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poi     PoiInfo     @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  comment CommentInfo @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([poiId])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+  @@map("user_content")
 }

@@ -1,3 +1,17 @@
+/** 将图片 URL 转换为 HTTPS（微信小程序要求） */
+export function toHttpsImage(url: string): string {
+    if (!url) return ''
+    // 已经是 https 或本地路径，直接返回
+    if (url.startsWith('https://') || url.startsWith('/') || url.startsWith('data:')) {
+        return url
+    }
+    // http:// 转换为 https://
+    if (url.startsWith('http://')) {
+        return url.replace(/^http:\/\//, 'https://')
+    }
+    return url
+}
+
 // 高德地图配置
 // ⚠️ 生产环境请使用环境变量管理 Key
 export const AMAP_KEY = '310b44907f5cd3d2aac0137f865c7505'
@@ -13,7 +27,7 @@ export const DEFAULT_CENTER = {
 export const DEFAULT_SCALE = 13
 
 // 打卡距离阈值（米）
-export const CHECK_IN_DISTANCE = 200
+export { CHECK_IN_DISTANCE } from '../config/env'
 
 // POI 加载半径（米）
 export const POI_LOAD_RADIUS = 5000
@@ -33,7 +47,7 @@ export function isInShanghai(lat: number, lng: number): boolean {
 }
 
 // ⚠️ 开发模式 mock 定位（上线前改为 null 恢复真实GPS）
-export const DEV_MOCK_LOCATION: { latitude: number; longitude: number } | null = null
+export { DEV_MOCK_LOCATION } from '../config/env'
 
 // 上海热门景点推荐（超出范围时展示）
 export const SHANGHAI_RECOMMENDED_POIS = [

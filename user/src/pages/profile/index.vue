@@ -2,7 +2,7 @@
   <view class="profile-page">
     <!-- 用户信息头部 -->
     <view class="profile-header">
-      <view v-if="isLoggedIn" class="user-info" @tap="goEdit">
+      <view v-if="isRegistered" class="user-info" @tap="goEdit">
         <image class="avatar" :src="userInfo?.avatar || '/static/logo.png'" mode="aspectFill" />
         <view class="user-detail">
           <text class="nickname">{{ userInfo?.nickname || 'User' }}</text>
@@ -30,8 +30,8 @@
         <text class="stat-label">{{ t('profile.myChecks') }}</text>
       </view>
       <view class="stat-divider" />
-      <view class="stat-item">
-        <text class="stat-num">0</text>
+      <view class="stat-item" @tap="goFavorites">
+        <text class="stat-num">{{ favoriteCount }}</text>
         <text class="stat-label">{{ t('profile.myCollects') }}</text>
       </view>
     </view>
@@ -46,6 +46,16 @@
       <view class="menu-item" @tap="goChecks">
         <AppIcon name="checkin" :size="56" />
         <text class="menu-text">{{ t('profile.myChecks') }}</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" @tap="goFavorites">
+        <AppIcon name="favorite" :size="56" />
+        <text class="menu-text">{{ t('profile.myCollects') }}</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" @tap="goStats">
+        <AppIcon name="stats" :size="56" />
+        <text class="menu-text">{{ t('profile.myStats') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @tap="goMessages">
@@ -71,6 +81,7 @@ import { useRouteStore } from '../../stores/route'
 import { useMessageStore } from '../../stores/message'
 import { userApi } from '../../api/user'
 import { routeApi } from '../../api/route'
+import { favoriteApi } from '../../api/favorite'
 import AppIcon from '../../components/AppIcon.vue'
 
 const { t } = useI18n()
@@ -79,13 +90,14 @@ const routeStore = useRouteStore()
 const messageStore = useMessageStore()
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+const isRegistered = computed(() => userStore.isRegistered)
 const userInfo = computed(() => userStore.userInfo)
 const unreadCount = computed(() => messageStore.unreadCount)
 const routeCount = computed(() => routeStore.myRoutes.length)
 const checkCount = ref(0)
+const favoriteCount = ref(0)
 
 async function doLogin() {
-  // 跳转到手机号登录页面
   uni.navigateTo({ url: '/pages/login/index' })
 }
 
@@ -95,11 +107,17 @@ async function loadData() {
     const routes = await routeApi.my({ pageSize: 100 })
     routeStore.setMyRoutes(routes.list)
   } catch {}
+  try {
+    const favRes = await favoriteApi.list({ page: 1, pageSize: 1 })
+    favoriteCount.value = favRes.total
+  } catch {}
 }
 
 function goEdit() { uni.navigateTo({ url: '/pages/profile/edit' }) }
 function goMyRoutes() { uni.navigateTo({ url: '/pages/route/my' }) }
 function goChecks() { uni.navigateTo({ url: '/pages/check/list' }) }
+function goFavorites() { uni.navigateTo({ url: '/pages/favorite/list' }) }
+function goStats() { uni.navigateTo({ url: '/pages/profile/stats' }) }
 function goMessages() { uni.navigateTo({ url: '/pages/message/list' }) }
 function goSettings() { uni.navigateTo({ url: '/pages/setting/index' }) }
 

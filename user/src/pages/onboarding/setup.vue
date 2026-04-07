@@ -39,6 +39,8 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '../../stores/user'
 import { userApi } from '../../api/user'
+import { uploadFile } from '../../api/upload'
+import { toHttpsImage } from '../../api/request'
 
 const userStore = useUserStore()
 const saving = ref(false)
@@ -60,13 +62,22 @@ onMounted(() => {
   }
 })
 
-function chooseAvatar() {
+async function chooseAvatar() {
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
-    success: (res) => {
-      form.value.avatar = res.tempFilePaths[0]
+    success: async (res) => {
+      const temp = res.tempFilePaths[0]
+      uni.showLoading({ title: '上传中…', mask: true })
+      try {
+        const url = await uploadFile(temp)
+        form.value.avatar = toHttpsImage(url)
+      } catch (e: any) {
+        uni.showToast({ title: e.message || '头像上传失败', icon: 'none' })
+      } finally {
+        uni.hideLoading()
+      }
     }
   })
 }

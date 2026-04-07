@@ -2,7 +2,10 @@
   <view class="check-list">
     <view class="page-header">
       <text class="page-title">{{ t('check.title') }}</text>
-      <text class="total-count">{{ t('check.total', { n: total }) }}</text>
+      <view class="header-right">
+        <text class="total-count">{{ t('check.total', { n: total }) }}</text>
+        <text v-if="checks.length > 0" class="poster-btn" @tap="onGeneratePoster">{{ t('check.generatePoster') }}</text>
+      </view>
     </view>
 
     <!-- 视图切换 -->
@@ -35,8 +38,8 @@
         <text class="empty-text">{{ t('check.noChecks') }}</text>
       </view>
 
-      <view v-for="check in checks" :key="check.id" class="check-item">
-        <image class="check-img" :src="check.poiImage" mode="aspectFill" />
+      <view v-for="check in checks" :key="check.id" class="check-item" @tap="goPoi(check.poiId)">
+        <image class="check-img" :src="check.poiImage || '/static/logo.png'" mode="aspectFill" />
         <view class="check-info">
           <text class="check-name">{{ check.poiName }}</text>
           <text class="check-time">📅 {{ formatDate(check.checkedAt) }}</text>
@@ -46,6 +49,7 @@
       </view>
 
       <view v-if="noMore && checks.length > 0" class="no-more">{{ t('common.noMore') }}</view>
+      <view class="bottom-space" />
     </scroll-view>
 
     <!-- 地图视图 -->
@@ -59,6 +63,20 @@
         show-location
       />
     </view>
+
+    <!-- 海报预览弹窗 -->
+    <view v-if="showPoster" class="poster-overlay" @tap="showPoster = false">
+      <view class="poster-preview" @tap.stop>
+        <image class="poster-img" :src="posterImage" mode="aspectFit" />
+        <view class="poster-actions">
+          <button class="poster-action-btn" @tap="onSavePoster">{{ t('check.saveToAlbum') }}</button>
+          <button class="poster-action-btn primary" @tap="onSharePoster">{{ t('common.share') }}</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 隐藏的 Canvas 用于绘制海报 -->
+    <PosterCanvas ref="posterRef" :data="posterData" />
   </view>
 </template>
 
@@ -66,6 +84,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { checkApi } from '../../api/check'
+import { showShareMenu } from '../../utils/share'
+import { exportPoster, saveToAlbum } from '../../components/PosterCanvas.vue'
 import type { CheckRecord } from '../../api/check'
 
 const { t } = useI18n()
@@ -77,6 +97,15 @@ const noMore = ref(false)
 const loading = ref(false)
 const activeFilter = ref('all')
 const mapCenter = ref({ latitude: 30.5728, longitude: 104.0668 })
+const showPoster = ref(false)
+const posterImage = ref('')
+const posterRef = ref()
+const posterData = ref({
+  title: '我的打卡记录',
+  records: [] as any[],
+  totalDays: 0,
+  totalPois: 0
+})
 
 const filters = [
   { key: 'all', label: '全部' },
@@ -128,7 +157,6 @@ async function loadData(reset = false) {
       checks.value.push(...res.list)
     }
     if (res.list.length < 20) noMore.value = true
-    // 更新地图中心
     if (checks.value.length > 0) {
       mapCenter.value = { latitude: checks.value[0].latitude, longitude: checks.value[0].longitude }
     }
@@ -148,6 +176,69 @@ function loadMore() {
   if (noMore.value) return
   page.value++
   loadData()
+}
+
+function goPoi(poiId: string) {
+  uni.navigateTo({ url: `/pages/poi/detail?id=${poiId}` })
+}
+
+async function onGeneratePoster() {
+  if (checks.value.length === 0) {
+    uni.showToast({ title: t('check.noChecksToGenerate'), icon: 'none' })
+    return
+  }
+
+  uni.showLoading({ title: t('check.generating') })
+
+  // 计算天数
+  const dates = checks.value.map(c => c.checkedAt.split('T')[0])
+  const uniqueDates = new Set(dates)
+
+  posterData.value = {
+    title: '我的打卡记录',
+    records: checks.value.map(c => ({
+      ...c,
+      poiName: c.poiName,
+      checkedAt: c.checkedAt
+    })),
+    totalDays: uniqueDates.size,
+    totalPois: checks.value.length
+  }
+
+  try {
+    // 等待 canvas 渲染完成
+    await new Promise(resolve => setTimeout(resolve, 500))
+    const imagePath = await exportPoster()
+    posterImage.value = imagePath
+    showPoster.value = true
+    uni.hideLoading()
+  } catch (error) {
+    uni.hideLoading()
+    console.error('[Poster] 生成失败:', error)
+    uni.showToast({ title: t('common.failed'), icon: 'none' })
+  }
+}
+
+async function onSavePoster() {
+  try {
+    uni.showLoading({ title: t('check.saving') })
+    await saveToAlbum(posterImage.value)
+    uni.hideLoading()
+    uni.showToast({ title: t('check.saveSuccess'), icon: 'success' })
+    showPoster.value = false
+  } catch (error) {
+    uni.hideLoading()
+    uni.showToast({ title: t('common.failed'), icon: 'none' })
+  }
+}
+
+function onSharePoster() {
+  showShareMenu({
+    title: '我的打卡记录',
+    routeId: 'check',
+    days: posterData.value.totalDays || 1,
+    poiCount: posterData.value.totalPois || 0,
+  })
 }
 
 onMounted(() => loadData(true))
@@ -170,6 +261,12 @@ onMounted(() => loadData(true))
   background: #fff;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
 .page-title {
   font-size: 36rpx;
   font-weight: 700;
@@ -179,6 +276,14 @@ onMounted(() => loadData(true))
 .total-count {
   font-size: 24rpx;
   color: #999;
+}
+
+.poster-btn {
+  padding: 8rpx 20rpx;
+  background: linear-gradient(135deg, #1890FF, #52C41A);
+  color: #fff;
+  border-radius: 30rpx;
+  font-size: 22rpx;
 }
 
 .view-toggle {
@@ -292,10 +397,62 @@ onMounted(() => loadData(true))
   height: 100%;
 }
 
+.bottom-space { height: 100rpx; }
+
 .no-more {
   text-align: center;
   padding: 32rpx;
   font-size: 26rpx;
   color: #ccc;
+}
+
+/* ========== 海报预览 ========== */
+
+.poster-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.poster-preview {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.poster-img {
+  width: 100%;
+  max-height: 800rpx;
+}
+
+.poster-actions {
+  display: flex;
+  gap: 24rpx;
+  padding: 24rpx;
+}
+
+.poster-action-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  border: 2rpx solid #1890FF;
+  background: #fff;
+  color: #1890FF;
+}
+
+.poster-action-btn.primary {
+  background: linear-gradient(135deg, #1890FF, #52C41A);
+  color: #fff;
+  border: none;
 }
 </style>

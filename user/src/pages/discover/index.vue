@@ -32,11 +32,16 @@
             class="content-card"
             @tap="goDetail(item.id)"
           >
-            <image class="card-img" :src="item.cover" mode="aspectFill" />
+            <image class="card-img" :src="item.cover || '/static/logo.png'" mode="aspectFill" />
             <view class="card-body">
               <text class="card-title">{{ item.title }}</text>
               <text class="card-summary">{{ item.summary }}</text>
+              <!-- 用户内容显示评分 -->
+              <view v-if="item.type === 'user'" class="card-rating">
+                <text class="card-stars">{{ '⭐'.repeat(item.rating || 0) }}</text>
+              </view>
               <view class="card-meta">
+                <text v-if="item.type === 'user'" class="card-user">{{ item.userNickname }}</text>
                 <text class="card-views">👁 {{ item.viewCount }}</text>
                 <text class="card-likes">❤️ {{ item.likeCount }}</text>
               </view>
@@ -51,11 +56,16 @@
             class="content-card"
             @tap="goDetail(item.id)"
           >
-            <image class="card-img" :src="item.cover" mode="aspectFill" />
+            <image class="card-img" :src="item.cover || '/static/logo.png'" mode="aspectFill" />
             <view class="card-body">
               <text class="card-title">{{ item.title }}</text>
               <text class="card-summary">{{ item.summary }}</text>
+              <!-- 用户内容显示评分 -->
+              <view v-if="item.type === 'user'" class="card-rating">
+                <text class="card-stars">{{ '⭐'.repeat(item.rating || 0) }}</text>
+              </view>
               <view class="card-meta">
+                <text v-if="item.type === 'user'" class="card-user">{{ item.userNickname }}</text>
                 <text class="card-views">👁 {{ item.viewCount }}</text>
                 <text class="card-likes">❤️ {{ item.likeCount }}</text>
               </view>
@@ -113,7 +123,9 @@ async function loadData(reset = false) {
       contentList.value.push(...res.list)
     }
     if (res.list.length < 10) noMore.value = true
-  } catch {} finally {
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '加载失败', icon: 'none' })
+  } finally {
     loading.value = false
   }
 }
@@ -133,7 +145,8 @@ function loadMore() {
 }
 
 function goDetail(id: string) {
-  uni.navigateTo({ url: `/pages/content/detail?id=${id}` })
+  if (!id) return
+  uni.navigateTo({ url: `/pages/content/detail?id=${encodeURIComponent(id)}` })
 }
 
 onMounted(() => loadData(true))
@@ -252,7 +265,12 @@ onMounted(() => loadData(true))
   display: flex;
   gap: 16rpx;
   margin-top: 12rpx;
+  align-items: center;
 }
+
+.card-rating { margin-top: 8rpx; }
+.card-stars { font-size: 22rpx; }
+.card-user { font-size: 22rpx; color: #1890FF; }
 
 .card-views, .card-likes {
   font-size: 22rpx;

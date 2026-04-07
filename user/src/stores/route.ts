@@ -12,6 +12,7 @@ export interface TravelRoute {
     id: string | number
     name: string
     title?: string
+    description?: string
     days: number
     totalPoi?: number
     poiCount?: number

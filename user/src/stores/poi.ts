@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { toHttpsImage } from '../utils/amap-config'
 
 export interface POI {
     id: string
@@ -20,6 +21,14 @@ export interface POI {
     tags?: string[]
 }
 
+/** 统一处理 POI 图片，确保都是 HTTPS */
+function normalizePoiImages(poi: POI): POI {
+    return {
+        ...poi,
+        images: poi.images.map(img => toHttpsImage(img))
+    }
+}
+
 export const usePoiStore = defineStore('poi', () => {
     const recommendList = ref<POI[]>([])
     const nearbyList = ref<POI[]>([])
@@ -28,15 +37,15 @@ export const usePoiStore = defineStore('poi', () => {
     const loading = ref(false)
 
     function setRecommendList(list: POI[]) {
-        recommendList.value = list
+        recommendList.value = list.map(normalizePoiImages)
     }
 
     function setNearbyList(list: POI[]) {
-        nearbyList.value = list
+        nearbyList.value = list.map(normalizePoiImages)
     }
 
     function setCurrentPoi(poi: POI) {
-        currentPoi.value = poi
+        currentPoi.value = normalizePoiImages(poi)
     }
 
     function setHeatmapData(data: typeof heatmapData.value) {

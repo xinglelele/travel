@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+
+# 上传文件（本地存储，生产环境建议改为 OSS/CDN）
+uploads/

@@ -8,6 +8,7 @@
 import { prisma } from '../../config'
 import { callQwen } from '../../external/qwen'
 import { cosineSimilarity, calculateDistance } from './poi.service'
+import { normalizeUrl } from '../../shared/utils/url'
 
 // ============================================
 // 常量
@@ -44,6 +45,7 @@ export interface RoutePoi {
   tags: string[]
   reason?: string
   stayTime?: number
+  images?: string[]
 }
 
 export interface RouteDay {
@@ -202,6 +204,7 @@ interface CandidatePoi {
   tagCodes: string[]
   heatScore: number
   description: string
+  images: string[]
 }
 
 /**
@@ -267,7 +270,19 @@ async function retrieveCandidates(
       tags: tagNames,
       tagCodes,
       heatScore: poi.stats?.heatScore || 0,
-      description: pDesc
+      description: pDesc,
+      images: (() => {
+        if (!poi.photos) return ['/static/logo.png']
+        try {
+          const parsed = typeof poi.photos === 'string' ? JSON.parse(poi.photos) : poi.photos
+          const valid = Array.isArray(parsed) ? parsed.filter((p: string) => p && p.trim()) : []
+          return valid.length > 0
+            ? valid.map((p: string) => normalizeUrl(p.trim()))
+            : ['/static/logo.png']
+        } catch {
+          return ['/static/logo.png']
+        }
+      })()
     }
   })
 
@@ -478,7 +493,8 @@ function validateAndFixRoute(
           category: matched.category,
           tags: matched.tags,
           reason: poi.reason || '',
-          stayTime: poi.stayTime || 2
+          stayTime: poi.stayTime || 2,
+          images: matched.images
         })
       }
     }
@@ -495,7 +511,8 @@ function validateAndFixRoute(
         category: fallback.category,
         tags: fallback.tags,
         reason: '推荐热门景点',
-        stayTime: 2
+        stayTime: 2,
+        images: fallback.images
       })
     }
 
@@ -568,7 +585,8 @@ function fallbackGenerateRoute(
       category: p.category,
       tags: p.tags,
       reason: p.tags[0] || '热门推荐',
-      stayTime: 2
+      stayTime: 2,
+      images: p.images
     }))
     daysData.push({
       day: d + 1,

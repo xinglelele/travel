@@ -219,7 +219,7 @@ async function handleRegister() {
 
 // 微信选择头像（获取 code）
 async function onWechatChoose(e: any) {
-  // 微信小程序获取 code
+  if (!e.detail?.avatarUrl) return
   uni.login({
     provider: 'weixin',
     success: async (res) => {

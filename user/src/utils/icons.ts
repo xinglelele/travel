@@ -26,6 +26,10 @@ export const ICONS = {
     navigate: svgFill('<polygon points="3,11 22,2 13,21 11,13" fill="#1890FF"/>'),
     checkin: svgFill('<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#52C41A"/><polyline points="9,9 11,11 15,7" stroke="#fff" stroke-width="2" fill="none"/>'),
     checkedIn: svgFill('<circle cx="12" cy="12" r="10" fill="#52C41A"/><polyline points="9,12 11,14 15,10" stroke="#fff" stroke-width="2.5" fill="none"/>'),
+    /** 我的收藏 */
+    favorite: svgFill('<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="#ff4d4f"/>'),
+    /** 数据统计 */
+    stats: svgFill('<rect x="4" y="14" width="4" height="6" rx="1" fill="#1890FF"/><rect x="10" y="10" width="4" height="10" rx="1" fill="#52C41A"/><rect x="16" y="6" width="4" height="14" rx="1" fill="#faad14"/>'),
     edit: svg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>'),
 } as const
 

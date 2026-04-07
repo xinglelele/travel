@@ -168,5 +168,21 @@ export const userApi = {
      * 获取AI规划剩余次数
      */
     getAiPlanCount: () =>
-        get<AiPlanCountResult>('/api/user/ai-plan/count')
+        get<AiPlanCountResult>('/api/user/ai-plan/count'),
+
+    /**
+     * 获取用户统计数据
+     */
+    stats: () =>
+        get<UserStats>('/api/user/stats')
+}
+
+/** 用户统计数据 */
+export interface UserStats {
+    checkCount: number       // 打卡总次数
+    routeCount: number       // 路线总数
+    commentCount: number      // 评论总数
+    favoriteCount: number     // 收藏总数
+    checkDays: number         // 打卡天数（去重）
+    activeDays30d: number    // 近30天活跃天数
 }

@@ -14,7 +14,13 @@
       <!-- 基础信息 -->
       <view class="info-card">
         <view class="info-header">
-          <text class="poi-name">{{ poi?.name }}</text>
+          <view class="name-favorite-row">
+            <text class="poi-name">{{ poi?.name }}</text>
+            <view class="favorite-btn" @tap="onToggleFavorite">
+              <text class="favorite-icon">{{ isFavorited ? '❤' : '🤍' }}</text>
+              <text class="favorite-text">{{ isFavorited ? t('poi.favorited') : t('poi.favorite') }}</text>
+            </view>
+          </view>
           <view class="rating-row">
             <AppIcon name="star" :size="36" />
             <text class="rating">{{ poi?.rating }}</text>
@@ -108,6 +114,8 @@ import { onLoad } from '@dcloudio/uni-app'
 import { poiApi } from '../../api/poi'
 import { commentApi } from '../../api/comment'
 import { checkApi } from '../../api/check'
+import { favoriteApi } from '../../api/favorite'
+import { DEV_MOCK_LOCATION } from '../../config/env'
 import type { POI } from '../../stores/poi'
 import type { Comment } from '../../api/comment'
 import AppIcon from '../../components/AppIcon.vue'
@@ -116,6 +124,7 @@ const { t } = useI18n()
 const poi = ref<POI | null>(null)
 const previewComments = ref<Comment[]>([])
 const checkedIn = ref(false)
+const isFavorited = ref(false)
 const poiId = ref('')
 let loaded = false
 
@@ -158,6 +167,12 @@ async function loadData(id: string) {
   } catch (e) {
     console.error('[POI Detail] commentApi.list 失败:', e)
   }
+
+  // 查询收藏状态
+  try {
+    const favRes = await favoriteApi.status(id)
+    isFavorited.value = favRes.favorited
+  } catch {}
 }
 
 function copyAddress() {
@@ -172,18 +187,41 @@ function callPhone() {
   }
 }
 
+async function onToggleFavorite() {
+  if (!poiId.value) return
+  try {
+    const res = await favoriteApi.toggle(poiId.value)
+    isFavorited.value = res.favorited
+    uni.showToast({
+      title: isFavorited.value ? t('poi.favorited') : t('poi.unfavorite'),
+      icon: 'success'
+    })
+  } catch (error: any) {
+    uni.showToast({ title: error.message || t('common.failed'), icon: 'none' })
+  }
+}
+
 async function onCheckIn() {
   if (checkedIn.value) return
-  uni.getLocation({
-    type: 'gcj02',
-    success: async (res) => {
-      try {
-        await checkApi.create({ poiId: poiId.value, latitude: res.latitude, longitude: res.longitude })
-        checkedIn.value = true
-        uni.showToast({ title: t('check.checkSuccess'), icon: 'success' })
-      } catch {}
-    }
-  })
+  // 开发模式下使用 DEV_MOCK_LOCATION，生产环境使用真实 GPS
+  const useMock = !!DEV_MOCK_LOCATION
+  const doCheckIn = (lat: number, lng: number) => {
+    checkApi.create({ poiId: poiId.value, latitude: lat, longitude: lng }).then((result) => {
+      checkedIn.value = true
+      uni.showToast({ title: t('check.checkSuccess'), icon: 'success' })
+    }).catch((error: any) => {
+      uni.showToast({ title: error.message || t('check.checkFailed'), icon: 'none' })
+    })
+  }
+  if (useMock) {
+    doCheckIn(DEV_MOCK_LOCATION.latitude, DEV_MOCK_LOCATION.longitude)
+  } else {
+    uni.getLocation({
+      type: 'gcj02',
+      success: (res) => doCheckIn(res.latitude, res.longitude),
+      fail: () => uni.showToast({ title: t('map.locationFailed'), icon: 'none' })
+    })
+  }
 }
 
 function onNavigate() {
@@ -201,7 +239,14 @@ function onShare() {
 }
 
 function goCommentList() { uni.navigateTo({ url: `/pages/comment/list?poiId=${poiId.value}` }) }
-function goAddComment() { uni.navigateTo({ url: `/pages/comment/create?poiId=${poiId.value}` }) }
+async function goAddComment() {
+    try {
+        await commentApi.can(poiId.value)
+        uni.navigateTo({ url: `/pages/comment/create?poiId=${poiId.value}` })
+    } catch (e: any) {
+        uni.showToast({ title: e?.message || '暂无法评论', icon: 'none' })
+    }
+}
 </script>
 
 <style scoped>
@@ -251,11 +296,38 @@ function goAddComment() { uni.navigateTo({ url: `/pages/comment/create?poiId=${p
   margin-bottom: 20rpx;
 }
 
+.name-favorite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
 .poi-name {
   display: block;
   font-size: 40rpx;
   font-weight: 700;
   color: #1a1a1a;
+  flex: 1;
+}
+
+.favorite-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  background: #fff0f0;
+  border-radius: 40rpx;
+  flex-shrink: 0;
+}
+
+.favorite-icon {
+  font-size: 32rpx;
+}
+
+.favorite-text {
+  font-size: 22rpx;
+  color: #ff4d4f;
 }
 
 .rating-row {

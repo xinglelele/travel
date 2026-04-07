@@ -5,6 +5,7 @@
 
 import { prisma } from '../../config'
 import { callQwenEmbedding } from '../../external/qwen'
+import { normalizeUrl } from '../../shared/utils/url'
 
 // ============================================
 // 常量定义
@@ -199,7 +200,7 @@ export class POIRecommendService {
         // 计算综合评分
         const score = calculateRecommendScore({
           vectorSimilarity,
-          heatScore: poi.stats?.heatScore || 0,
+          heatScore: poi.latestStats?.heatScore ? Number(poi.latestStats.heatScore) : 0,
           distance: params.latitude && params.longitude
             ? calculateDistance(params.latitude, params.longitude,
                 Number(poi.latitude), Number(poi.longitude))
@@ -416,16 +417,31 @@ export class POIRecommendService {
    * 获取候选 POI
    */
   private async getCandidatePOIs(params: { limit: number }): Promise<any[]> {
-    return await prisma.poiInfo.findMany({
+    const pois = await prisma.poiInfo.findMany({
       where: { status: 1 },
       include: {
         poiTags: { include: { tag: true } },
         stats: true,
         tickets: { where: { status: 1 }, take: 1 }
       },
-      orderBy: { stats: { heatScore: 'desc' } },
-      take: params.limit
+      take: params.limit * 2  // 多取一些，排序后再截取
     })
+
+    // 按热度排序（一对多关系，需要在代码中排序）
+    return pois
+      .map(poi => ({
+        ...poi,
+        // 取最新的统计数据
+        latestStats: poi.stats.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        )[0] || null
+      }))
+      .sort((a, b) => {
+        const scoreA = a.latestStats?.heatScore || 0
+        const scoreB = b.latestStats?.heatScore || 0
+        return Number(scoreB) - Number(scoreA)
+      })
+      .slice(0, params.limit)
   }
 
   /**
@@ -517,7 +533,9 @@ export class POIRecommendService {
     if (poi.photos) {
       try {
         const photos = typeof poi.photos === 'string' ? JSON.parse(poi.photos) : poi.photos
-        images = Array.isArray(photos) && photos.length > 0 ? photos : ['/static/logo.png']
+        images = Array.isArray(photos) && photos.length > 0
+          ? photos.map((p: string) => normalizeUrl(p))
+          : ['/static/logo.png']
       } catch {
         images = ['/static/logo.png']
       }
@@ -560,7 +578,7 @@ export class POIRecommendService {
       longitude: Number(poi.longitude),
       address: address,
       phone: poi.tel || '',
-      rating: poi.stats?.heatScore ? Number(poi.stats.heatScore) / 2 : 4.5,
+      rating: poi.latestStats?.heatScore ? Number(poi.latestStats.heatScore) / 2 : 4.5,
       commentCount: 0,
       distance: undefined,
       tags: poi.poiTags?.map((t: any) => {
