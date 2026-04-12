@@ -566,6 +566,11 @@ const showTextInput = ref(false)
 const textInputValue = ref('')
 
 function onTextInputConfirm() {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后使用路线规划', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
   const text = textInputValue.value.trim()
   if (!text) return
   textInputValue.value = ''
@@ -1057,6 +1062,11 @@ function getSIManager() {
 }
 
 function onVoiceTap() {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后使用路线规划', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
   if (voiceState.value === 'listening') {
     stopListening()
   } else if (voiceState.value === 'idle' || voiceState.value === 'error') {
@@ -1308,6 +1318,11 @@ function fitMapToPois(pois: Array<{ latitude: number; longitude: number }>) {
 }
 
 async function switchMode(mode: TravelMode) {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后使用路线规划', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
   travelMode.value = mode
   if (!planResult.value) return
   if (mode === 'transit') {
@@ -1344,6 +1359,11 @@ async function switchMode(mode: TravelMode) {
 
 /** 修改某段的交通方式并重新规划该天路径 */
 async function setSegmentMode(dayIdx: number, itemIdx: number, mode: TravelMode) {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后使用路线规划', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
   if (!planResult.value) return
   // transit 模式：先拉取所有方案让用户选
   if (mode === 'transit') {
@@ -1398,8 +1418,8 @@ async function saveRoute() {
     return
   }
   if (!userStore.isLoggedIn) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
-    setTimeout(() => uni.switchTab({ url: '/pages/home/index' }), 1500)
+    uni.showToast({ title: '请先登录后再保存路线', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
     return
   }
   try {
@@ -1431,6 +1451,11 @@ async function saveRoute() {
 }
 
 async function openRouteSelector() {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后查看我的路线', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
   showRouteSelector.value = true
   panelOpen.value = false
   try {

@@ -163,7 +163,14 @@ function onBannerTap(item: { link: string }) {
 
 function goSearch() { uni.navigateTo({ url: '/pages/search/index' }) }
 function goMessages() { uni.navigateTo({ url: '/pages/message/list' }) }
-function goRoutePlan() { uni.navigateTo({ url: '/pages/route/plan' }) }
+function goRoutePlan() {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后使用路线规划', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
+  uni.navigateTo({ url: '/pages/route/plan' })
+}
 function goMap() { uni.switchTab({ url: '/pages/map/index' }) }
 function goPoi(id: string) { uni.navigateTo({ url: `/pages/poi/detail?id=${id}` }) }
 

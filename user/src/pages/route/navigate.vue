@@ -110,6 +110,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouteStore } from '../../stores/route'
+import { useUserStore } from '../../stores/user'
 import { routeApi } from '../../api/route'
 import { checkApi } from '../../api/check'
 import type { POI } from '../../stores/poi'
@@ -117,6 +118,7 @@ import { CHECK_IN_EFFECTIVE, DEV_MOCK_LOCATION } from '../../config/env'
 
 const { t } = useI18n()
 const routeStore = useRouteStore()
+const userStore = useUserStore()
 
 const DEFAULT_MAP = { latitude: 31.2304, longitude: 121.4737 }
 
@@ -299,6 +301,11 @@ const polyline = computed(() => {
 
 // 打卡
 async function onCheckIn() {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后使用打卡功能', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
   if (!currentPoiCoordsValid.value) {
     uni.showToast({ title: t('route.poiNoCoords'), icon: 'none' })
     return
@@ -330,6 +337,11 @@ async function onCheckIn() {
 function skipReview() { checkInSuccessVisible.value = false }
 
 function onWriteReview() {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后使用评论功能', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
   checkInSuccessVisible.value = false
   const poiId = currentPoi.value.id || currentPoi.value.poiId || ''
   uni.navigateTo({ url: `/pages/comment/create?poiId=${poiId}` })

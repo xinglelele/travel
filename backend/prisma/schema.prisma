@@ -224,7 +224,7 @@ model UserFavorite {
   @@map("user_favorite")
 }
 
-/** 用户内容点赞（发现页评论推荐） */
+// 用户内容点赞（发现页评论推荐）
 model UserContentLike {
   id            Int      @id @default(autoincrement())
   userId        Int      @map("user_id")
@@ -239,7 +239,7 @@ model UserContentLike {
   @@map("user_content_like")
 }
 
-/** 官方内容点赞 */
+// 官方内容点赞
 model OfficialContentLike {
   id                Int      @id @default(autoincrement())
   userId            Int      @map("user_id")
@@ -254,7 +254,7 @@ model OfficialContentLike {
   @@map("official_content_like")
 }
 
-/** 用户内容收藏 */
+// 用户内容收藏
 model UserContentFavorite {
   id            Int      @id @default(autoincrement())
   userId        Int      @map("user_id")
@@ -269,7 +269,7 @@ model UserContentFavorite {
   @@map("user_content_favorite")
 }
 
-/** 官方内容收藏 */
+// 官方内容收藏
 model OfficialContentFavorite {
   id                Int      @id @default(autoincrement())
   userId            Int      @map("user_id")
@@ -302,7 +302,8 @@ model PoiInfo {
   email        String?   @map("email")
   photos       Json?     @map("photos")
   streetView   String?   @map("street_view")
-  district     String?   @map("district")
+  districtId   Int?      @map("district_id")
+  district     District? @relation(fields: [districtId], references: [id])
   isFree       Int       @default(0) @map("is_free")
   needTickets  Int       @default(0) @map("need_tickets")
   officialUrl  String?   @map("official_url")
@@ -333,12 +334,11 @@ model PoiInfo {
 
   @@index([poiUuid])
   @@index([status])
-  @@index([district])
+  @@index([districtId])
   @@map("poi_info")
 }
 
 model PoiStats {
-  id         Int       @id @default(autoincrement())
   poiId      Int       @map("poi_id")
   date       DateTime  @db.Date @map("date")
   checkCount Int       @default(0) @map("check_count")
@@ -349,7 +349,7 @@ model PoiStats {
 
   poi PoiInfo @relation(fields: [poiId], references: [id], onDelete: Cascade)
 
-  @@unique([poiId, date])
+  @@id([poiId, date])
   @@map("poi_stats")
 }
 
@@ -364,10 +364,15 @@ model TagInfo {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  poiTags PoiTagRel[]
+  poiTags  PoiTagRel[]
+  // 自引用：父级标签
+  parent   TagInfo?  @relation("TagHierarchy", fields: [parentId], references: [id])
+  // 自引用：子级标签
+  children TagInfo[] @relation("TagHierarchy")
 
   @@index([tagCode])
   @@index([category])
+  @@index([parentId])
   @@map("tag_info")
 }
 
@@ -693,6 +698,8 @@ model UserContent {
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   poi     PoiInfo     @relation(fields: [poiId], references: [id], onDelete: Cascade)
   comment CommentInfo @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  likes   UserContentLike[]
+  favorites UserContentFavorite[]
 
   @@index([userId])
   @@index([poiId])
@@ -700,4 +707,20 @@ model UserContent {
   @@index([status])
   @@index([createdAt])
   @@map("user_content")
+}
+
+// 行政区参考表（上海 16 个区）
+model District {
+  id         Int       @id @default(autoincrement())
+  code       String    @unique @map("code")        // 行政区划代码，如 310101
+  name       String    @map("name")                // 行政区名称，如 黄浦区
+  shortName  String?   @map("short_name")          // 简称，如 黄浦
+  lng        Decimal?  @db.Decimal(10, 7) @map("lng")   // 行政区中心经度（可选）
+  lat        Decimal?  @db.Decimal(10, 7) @map("lat")   // 行政区中心纬度（可选）
+  sortOrder  Int       @default(0) @map("sort_order")   // 排序顺序
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  pois PoiInfo[]
+
+  @@map("district")
 }

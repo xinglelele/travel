@@ -11,8 +11,8 @@
 
 /** 开发模式 mock 定位坐标（设为 null 则使用真实 GPS，上线前务必改为 null） */
 export const DEV_MOCK_LOCATION: { latitude: number; longitude: number } | null = {
-    latitude:31.2350210,   // 东方明珠
-    longitude: 121.4626720
+    latitude:31.2081970,   // 东方明珠
+    longitude: 121.4686620
 }
 
 /** 打卡有效距离（米），超过此距离打卡会被拒绝 */

@@ -67,10 +67,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouteStore } from '../../stores/route'
+import { useUserStore } from '../../stores/user'
 import { routeApi } from '../../api/route'
 
 const { t } = useI18n()
 const routeStore = useRouteStore()
+const userStore = useUserStore()
 
 const inputText = ref('')
 const selectedTags = ref<string[]>([])
@@ -104,6 +106,11 @@ function onVoiceInput() {
 }
 
 async function onGenerate() {
+  if (!userStore.isLoggedIn) {
+    uni.showToast({ title: '请先登录后使用路线规划', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1500)
+    return
+  }
   const prompt = inputText.value.trim() || selectedTags.value.map(k => t(`route.tags.${k}`)).join('、')
   if (!prompt) return
 

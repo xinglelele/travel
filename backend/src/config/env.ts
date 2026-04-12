@@ -33,6 +33,7 @@ export const env = {
     model: process.env.OPENAI_MODEL || 'qwen-turbo',
   },
 
+  /** 高德：地理编码等 REST 接口用 AMAP_KEY（控制台须勾选「Web服务」）；前端地图仍用 VITE_AMAP_KEY */
   amap: {
     key: process.env.AMAP_KEY || '',
   },

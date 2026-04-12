@@ -4,6 +4,14 @@
       <text class="page-title">{{ t('route.myRoutes') }}</text>
     </view>
 
+    <!-- 未登录提示 -->
+    <view v-if="!isLoggedIn" class="login-tip">
+      <text class="login-tip-icon">🔒</text>
+      <text class="login-tip-text">登录后可查看和管理您的路线</text>
+      <button class="login-tip-btn" @tap="goLogin">立即登录</button>
+    </view>
+
+    <template v-else>
     <view class="search-bar">
       <view class="search-input">
         <text class="search-icon">🔍</text>
@@ -41,6 +49,7 @@
 
       <view v-if="noMore && filteredRoutes.length > 0" class="no-more">{{ t('common.noMore') }}</view>
     </scroll-view>
+    </template>
   </view>
 </template>
 
@@ -48,14 +57,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouteStore } from '../../stores/route'
+import { useUserStore } from '../../stores/user'
 import { routeApi } from '../../api/route'
 
 const { t } = useI18n()
 const routeStore = useRouteStore()
+const userStore = useUserStore()
 
 const keyword = ref('')
 const page = ref(1)
 const noMore = ref(false)
+const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const filteredRoutes = computed(() => {
   if (!keyword.value) return routeStore.myRoutes
@@ -111,8 +123,13 @@ function onLongPress(id: string) {
 
 function goDetail(id: string) { uni.navigateTo({ url: `/pages/route/detail?id=${id}` }) }
 function goPlan() { uni.navigateTo({ url: '/pages/route/plan' }) }
+function goLogin() { uni.navigateTo({ url: '/pages/login/index' }) }
 
-onMounted(() => loadData())
+onMounted(() => {
+  if (isLoggedIn.value) {
+    loadData()
+  }
+})
 </script>
 
 <style scoped>
@@ -139,6 +156,34 @@ onMounted(() => loadData())
   padding: 16rpx 24rpx;
   background: #fff;
   border-bottom: 1rpx solid #f0f0f0;
+}
+
+/* 未登录提示样式 */
+.login-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 48rpx;
+  gap: 24rpx;
+}
+
+.login-tip-icon { font-size: 80rpx; }
+
+.login-tip-text {
+  font-size: 28rpx;
+  color: #999;
+  text-align: center;
+}
+
+.login-tip-btn {
+  background: linear-gradient(135deg, #1890FF, #52C41A);
+  color: #fff;
+  border-radius: 44rpx;
+  padding: 0 48rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  font-size: 28rpx;
+  border: none;
 }
 
 .search-input {

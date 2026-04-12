@@ -520,7 +520,8 @@ export class POIRecommendService {
     if (poi.poiType) parts.push(`景点类型：${poi.poiType}`)
 
     // 5. 地区
-    if (poi.district) parts.push(`所在地区：${poi.district}`)
+    const districtName = typeof poi.district === 'string' ? poi.district : poi.district?.name
+    if (districtName) parts.push(`所在地区：${districtName}`)
 
     return parts.join('\n')
   }

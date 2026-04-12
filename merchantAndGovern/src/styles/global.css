@@ -1,0 +1,96 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+  background: #f5f6fa;
+  color: #333;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.page-container {
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stats-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stats-card .label {
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.stats-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1;
+}
+
+.stats-card .trend {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.stats-card .trend.up {
+  color: #67c23a;
+}
+
+.stats-card .trend.down {
+  color: #f56c6c;
+}
+
+.el-table {
+  border-radius: 8px;
+  overflow: hidden;
+}

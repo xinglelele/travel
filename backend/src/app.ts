@@ -14,6 +14,8 @@ import checkRoutes from './modules/check/check.routes'
 import commentRoutes from './modules/comment/comment.routes'
 import favoriteRoutes from './modules/favorite/favorite.routes'
 import uploadRoutes from './modules/common/upload.routes'
+import merchantRoutes from './modules/merchant/merchant.routes'
+import governmentRoutes from './modules/government/government.routes'
 
 // 确保 uploads 目录存在（供静态文件和上传共用）
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads')
@@ -47,6 +49,8 @@ export function createApp(): Express {
   app.use('/api/comment', commentRoutes)
   app.use('/api/favorite', favoriteRoutes)
   app.use('/api/common', uploadRoutes)
+  app.use('/api/merchant', merchantRoutes)
+  app.use('/api/gov', governmentRoutes)
 
   // 错误处理
   app.use(errorHandler)
